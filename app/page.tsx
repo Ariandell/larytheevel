@@ -53,6 +53,19 @@ export default function Home() {
 
   return (
     <main className={`night-shift ${started ? "has-started" : ""} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""}`} style={sceneStyle}>
+      <svg className="screen-mask-defs" aria-hidden="true" focusable="false">
+        <defs>
+          <clipPath id="left-crt-mask" clipPathUnits="objectBoundingBox">
+            <path d="M .08 .08 C .3 .02 .7 0 .94 .07 C .99 .28 .99 .75 .93 .93 C .7 .99 .32 1 .06 .96 C .01 .76 .01 .28 .08 .08 Z" />
+          </clipPath>
+          <clipPath id="center-crt-mask" clipPathUnits="objectBoundingBox">
+            <path d="M .08 .05 C .32 0 .68 0 .92 .05 C .99 .24 1 .76 .92 .95 C .68 1 .32 1 .08 .95 C .01 .76 0 .24 .08 .05 Z" />
+          </clipPath>
+          <clipPath id="right-crt-mask" clipPathUnits="objectBoundingBox">
+            <path d="M .06 .07 C .3 0 .7 .02 .92 .08 C .99 .28 .99 .76 .94 .96 C .68 1 .3 .99 .07 .93 C .01 .75 .01 .28 .06 .07 Z" />
+          </clipPath>
+        </defs>
+      </svg>
       <div className="scene-frame" aria-label="Evil Larry night surveillance room">
         <video ref={loopRef} className="room-video loop-video" src="/assets/looped.mp4" preload="auto" playsInline loop muted />
         <video ref={introRef} className="room-video intro-video" src="/assets/intro.mp4" preload="auto" playsInline muted onEnded={handoffToLoop} />

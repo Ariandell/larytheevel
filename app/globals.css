@@ -6,22 +6,26 @@ html,body { width:100%; min-height:100%; margin:0; overflow:hidden; background:v
 button { font:inherit; }
 
 .night-shift { position:relative; width:100vw; height:100svh; overflow:hidden; color:var(--ink); background:#020302; font-family:var(--font-geist-mono),monospace; isolation:isolate; }
+.screen-mask-defs { position:absolute; width:0; height:0; overflow:hidden; pointer-events:none; }
 .scene-frame { position:absolute; z-index:1; left:50%; top:50%; width:max(100vw,177.778svh); height:max(56.25vw,100svh); overflow:hidden; background:#080907; transform:translate(-50%,-50%) scale(1); transition:transform 850ms cubic-bezier(.2,.8,.2,1),filter 600ms ease; will-change:transform; }
 .room-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none; }
 .loop-video { z-index:1; }
 .intro-video { z-index:2; opacity:1; }
 .is-online .intro-video { opacity:0; }
 
-.monitor { position:absolute; z-index:3; display:grid; place-items:center; padding:0; overflow:hidden; color:#cce3bb; border:0; border-radius:18%/14%; background:rgba(3,10,6,.22); opacity:0; cursor:pointer; pointer-events:none; transition:opacity 180ms ease,filter 180ms ease; box-shadow:inset 0 0 24px rgba(0,0,0,.3); }
+.monitor { position:absolute; z-index:3; display:grid; place-items:center; padding:0; overflow:hidden; color:#cce3bb; border:0; border-radius:0; background:rgba(3,10,6,.24); opacity:0; cursor:pointer; pointer-events:none; transition:opacity 180ms ease,filter 180ms ease; box-shadow:inset 0 0 24px rgba(0,0,0,.3); }
 .is-online .monitor { opacity:1; pointer-events:auto; animation:screenBoot 900ms steps(2) both; }
 .monitor:hover,.monitor:focus-visible { filter:brightness(1.45) drop-shadow(0 0 12px rgba(161,215,140,.35)); outline:none; }
-.monitor-left { left:18.15%; top:56.2%; width:12.3%; height:16.1%; }
-.monitor-center { left:44%; top:48.25%; width:13.7%; height:18.15%; }
-.monitor-right { left:70.05%; top:56.25%; width:11.55%; height:15.9%; }
+.monitor-left { left:18.15%; top:56.2%; width:12.3%; height:16.1%; clip-path:url(#left-crt-mask); -webkit-clip-path:url(#left-crt-mask); }
+.monitor-center { left:44%; top:48.25%; width:13.7%; height:18.15%; clip-path:url(#center-crt-mask); -webkit-clip-path:url(#center-crt-mask); }
+.monitor-right { left:70.05%; top:56.25%; width:11.55%; height:15.9%; clip-path:url(#right-crt-mask); -webkit-clip-path:url(#right-crt-mask); }
 .monitor-glass,.monitor-static { position:absolute; inset:0; pointer-events:none; }
 .monitor-glass { z-index:3; background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.46) 100%),linear-gradient(120deg,rgba(255,255,255,.035),transparent 28%); box-shadow:inset 0 0 14px rgba(0,0,0,.42); }
 .monitor-static { z-index:1; opacity:.28; background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(165,210,150,.035) 0 1px,transparent 1px 3px); animation:scan 4s linear infinite; }
 .monitor-ui { position:relative; z-index:2; display:grid; gap:clamp(3px,.45vw,8px); width:82%; text-align:center; text-shadow:0 0 8px currentColor; }
+.monitor-left .monitor-ui { transform:perspective(700px) rotateY(5deg) skewY(1deg); transform-origin:right center; }
+.monitor-center .monitor-ui { transform:scaleX(.97); }
+.monitor-right .monitor-ui { transform:perspective(700px) rotateY(-5deg) skewY(-1deg); transform-origin:left center; }
 .monitor-ui strong { font-size:clamp(7px,.72vw,14px); letter-spacing:.06em; }
 .monitor-code,.monitor-prompt { font-size:clamp(5px,.42vw,9px); opacity:.65; }
 .monitor-code { text-align:left; }
