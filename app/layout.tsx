@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://evil-larry-night-shift.qapabr6857771bee86.chatgpt.site"),
   title: "Evil Larry — Night Shift",
   description: "Enter the Evil Larry night surveillance room.",
   openGraph: {
