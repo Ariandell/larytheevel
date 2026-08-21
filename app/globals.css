@@ -12,15 +12,15 @@ button { font:inherit; }
 .intro-video { z-index:2; opacity:1; }
 .is-online .intro-video { opacity:0; }
 
-.monitor { position:absolute; z-index:3; display:grid; place-items:center; padding:0; overflow:hidden; color:#cce3bb; border:0; border-radius:11%/14%; background:rgba(3,7,5,.96); opacity:0; cursor:pointer; pointer-events:none; transition:opacity 180ms ease,filter 180ms ease; box-shadow:inset 0 0 32px #000,0 0 0 1px rgba(180,212,165,.07); }
+.monitor { position:absolute; z-index:3; display:grid; place-items:center; padding:0; overflow:hidden; color:#cce3bb; border:0; border-radius:18%/14%; background:rgba(3,10,6,.22); opacity:0; cursor:pointer; pointer-events:none; transition:opacity 180ms ease,filter 180ms ease; box-shadow:inset 0 0 24px rgba(0,0,0,.3); }
 .is-online .monitor { opacity:1; pointer-events:auto; animation:screenBoot 900ms steps(2) both; }
 .monitor:hover,.monitor:focus-visible { filter:brightness(1.45) drop-shadow(0 0 12px rgba(161,215,140,.35)); outline:none; }
-.monitor-left { left:17.2%; top:55.1%; width:14.1%; height:18.4%; clip-path:polygon(2% 4%,98% 8%,96% 94%,4% 98%); }
-.monitor-center { left:43.25%; top:47.1%; width:15.2%; height:20.6%; clip-path:polygon(3% 2%,97% 2%,97% 96%,3% 96%); }
-.monitor-right { left:69.15%; top:55.2%; width:13.2%; height:18.1%; clip-path:polygon(2% 8%,98% 4%,96% 98%,4% 94%); }
+.monitor-left { left:18.15%; top:56.2%; width:12.3%; height:16.1%; }
+.monitor-center { left:44%; top:48.25%; width:13.7%; height:18.15%; }
+.monitor-right { left:70.05%; top:56.25%; width:11.55%; height:15.9%; }
 .monitor-glass,.monitor-static { position:absolute; inset:0; pointer-events:none; }
-.monitor-glass { z-index:3; background:radial-gradient(ellipse at center,transparent 52%,rgba(0,0,0,.82) 100%),linear-gradient(120deg,rgba(255,255,255,.07),transparent 30%); box-shadow:inset 0 0 20px rgba(0,0,0,.9); }
-.monitor-static { z-index:1; opacity:.18; background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(165,210,150,.035) 0 1px,transparent 1px 3px); animation:scan 4s linear infinite; }
+.monitor-glass { z-index:3; background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.46) 100%),linear-gradient(120deg,rgba(255,255,255,.035),transparent 28%); box-shadow:inset 0 0 14px rgba(0,0,0,.42); }
+.monitor-static { z-index:1; opacity:.28; background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(165,210,150,.035) 0 1px,transparent 1px 3px); animation:scan 4s linear infinite; }
 .monitor-ui { position:relative; z-index:2; display:grid; gap:clamp(3px,.45vw,8px); width:82%; text-align:center; text-shadow:0 0 8px currentColor; }
 .monitor-ui strong { font-size:clamp(7px,.72vw,14px); letter-spacing:.06em; }
 .monitor-code,.monitor-prompt { font-size:clamp(5px,.42vw,9px); opacity:.65; }
