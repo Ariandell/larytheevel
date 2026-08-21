@@ -1,30 +1,77 @@
 "use client";
 
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import {
+  CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 type MonitorId = "left" | "center" | "right";
+type CornerId = "tl" | "tr" | "br" | "bl";
+type Point = { x: number; y: number };
 type MonitorConfig = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  corners: Record<CornerId, Point>;
   curveX: number;
   curveY: number;
-  slant: number;
-  perspective: number;
-  skew: number;
   contentScale: number;
   screenAlpha: number;
 };
 type ScreenConfigs = Record<MonitorId, MonitorConfig>;
-type NumericConfigKey = keyof MonitorConfig;
+type NumericConfigKey = "curveX" | "curveY" | "contentScale" | "screenAlpha";
+type DragState = {
+  id: MonitorId;
+  mode: "move" | "corner" | "rotate";
+  corner?: CornerId;
+  startX: number;
+  startY: number;
+  startAngle: number;
+  center: Point;
+  config: MonitorConfig;
+};
 
-const STORAGE_KEY = "evil-larry-screen-calibration-v1";
+const STORAGE_KEY = "evil-larry-screen-calibration-v2";
 const monitorIds: MonitorId[] = ["left", "center", "right"];
+const cornerIds: CornerId[] = ["tl", "tr", "br", "bl"];
+
 const defaultScreens: ScreenConfigs = {
-  left: { x: 18.15, y: 56.2, width: 12.3, height: 16.1, curveX: 8, curveY: 8, slant: 1.5, perspective: 5, skew: 1, contentScale: 1, screenAlpha: .24 },
-  center: { x: 44, y: 48.25, width: 13.7, height: 18.15, curveX: 8, curveY: 5, slant: 0, perspective: 0, skew: 0, contentScale: 1, screenAlpha: .24 },
-  right: { x: 70.05, y: 56.25, width: 11.55, height: 15.9, curveX: 6, curveY: 7, slant: -1.5, perspective: -5, skew: -1, contentScale: 1, screenAlpha: .24 },
+  left: {
+    corners: {
+      tl: { x: 19.1, y: 57.4 },
+      tr: { x: 29.6, y: 57.2 },
+      br: { x: 29.45, y: 71.15 },
+      bl: { x: 18.9, y: 71.25 },
+    },
+    curveX: 8,
+    curveY: 8,
+    contentScale: 1,
+    screenAlpha: .24,
+  },
+  center: {
+    corners: {
+      tl: { x: 45.1, y: 49.15 },
+      tr: { x: 56.6, y: 49.15 },
+      br: { x: 56.6, y: 65.5 },
+      bl: { x: 45.1, y: 65.5 },
+    },
+    curveX: 8,
+    curveY: 6,
+    contentScale: 1,
+    screenAlpha: .24,
+  },
+  right: {
+    corners: {
+      tl: { x: 70.7, y: 57.35 },
+      tr: { x: 80.65, y: 57.45 },
+      br: { x: 81.05, y: 71.05 },
+      bl: { x: 70.85, y: 71.1 },
+    },
+    curveX: 8,
+    curveY: 8,
+    contentScale: 1,
+    screenAlpha: .24,
+  },
 };
 
 const monitorCopy: Record<MonitorId, { code: string; title: string; detail: string }> = {
@@ -33,39 +80,95 @@ const monitorCopy: Record<MonitorId, { code: string; title: string; detail: stri
   right: { code: "ARC-09", title: "THE ARCHIVES", detail: "Recovered footage, classified memes and sightings." },
 };
 
-const calibrationControls: Array<{ key: NumericConfigKey; label: string; min: number; max: number; step: number; suffix?: string }> = [
-  { key: "x", label: "Position X", min: 0, max: 88, step: .05, suffix: "%" },
-  { key: "y", label: "Position Y", min: 0, max: 88, step: .05, suffix: "%" },
-  { key: "width", label: "Width", min: 5, max: 30, step: .05, suffix: "%" },
-  { key: "height", label: "Height", min: 5, max: 35, step: .05, suffix: "%" },
-  { key: "curveX", label: "Horizontal curve", min: 0, max: 20, step: .25, suffix: "%" },
-  { key: "curveY", label: "Vertical curve", min: 0, max: 20, step: .25, suffix: "%" },
-  { key: "slant", label: "Side slant", min: -10, max: 10, step: .25, suffix: "%" },
-  { key: "perspective", label: "Perspective", min: -15, max: 15, step: .25, suffix: "°" },
-  { key: "skew", label: "Text skew", min: -8, max: 8, step: .25, suffix: "°" },
+const calibrationControls: Array<{ key: NumericConfigKey; label: string; min: number; max: number; step: number }> = [
+  { key: "curveX", label: "Horizontal bend", min: -20, max: 20, step: .25 },
+  { key: "curveY", label: "Vertical bend", min: -20, max: 20, step: .25 },
   { key: "contentScale", label: "Content scale", min: .65, max: 1.35, step: .01 },
   { key: "screenAlpha", label: "Screen opacity", min: 0, max: .8, step: .01 },
 ];
+
+function cloneConfig<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function makeMaskPath(config: MonitorConfig) {
-  const cx = clamp(config.curveX / 100, 0, .25);
-  const cy = clamp(config.curveY / 100, 0, .25);
-  const slant = clamp(config.slant / 100, -.15, .15);
-  const topLeft = clamp(cx + slant, 0, .35);
-  const topRight = clamp(1 - cx + slant, .65, 1);
-  const bottomRight = clamp(1 - cx - slant, .65, 1);
-  const bottomLeft = clamp(cx - slant, 0, .35);
+function distance(a: Point, b: Point) {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
 
-  return `M ${topLeft} ${cy} C .32 0 .68 0 ${topRight} ${cy} C 1 .3 1 .7 ${bottomRight} ${1 - cy} C .68 1 .32 1 ${bottomLeft} ${1 - cy} C 0 .7 0 .3 ${topLeft} ${cy} Z`;
+function centerOf(config: MonitorConfig): Point {
+  const points = cornerIds.map((corner) => config.corners[corner]);
+  return {
+    x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+    y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+  };
+}
+
+function boundsOf(config: MonitorConfig) {
+  const points = cornerIds.map((corner) => config.corners[corner]);
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  const right = Math.max(...xs);
+  const bottom = Math.max(...ys);
+  return { left, top, width: right - left, height: bottom - top };
+}
+
+function screenRotation(config: MonitorConfig) {
+  const { tl, tr } = config.corners;
+  return Math.atan2(tr.y - tl.y, tr.x - tl.x) * 180 / Math.PI;
+}
+
+function edgeControls(a: Point, b: Point, strength: number) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const normal = { x: dy / length, y: -dx / length };
+  return [
+    { x: a.x + dx / 3 + normal.x * strength, y: a.y + dy / 3 + normal.y * strength },
+    { x: a.x + dx * 2 / 3 + normal.x * strength, y: a.y + dy * 2 / 3 + normal.y * strength },
+  ];
+}
+
+function makeMaskPath(config: MonitorConfig) {
+  const { tl, tr, br, bl } = config.corners;
+  const averageWidth = (distance(tl, tr) + distance(bl, br)) / 2;
+  const averageHeight = (distance(tl, bl) + distance(tr, br)) / 2;
+  const horizontalStrength = averageWidth * config.curveX / 100;
+  const verticalStrength = averageHeight * config.curveY / 100;
+  const [top1, top2] = edgeControls(tl, tr, verticalStrength);
+  const [right1, right2] = edgeControls(tr, br, horizontalStrength);
+  const [bottom1, bottom2] = edgeControls(br, bl, verticalStrength);
+  const [left1, left2] = edgeControls(bl, tl, horizontalStrength);
+  const n = (value: number) => (value / 100).toFixed(5);
+
+  return [
+    `M ${n(tl.x)} ${n(tl.y)}`,
+    `C ${n(top1.x)} ${n(top1.y)} ${n(top2.x)} ${n(top2.y)} ${n(tr.x)} ${n(tr.y)}`,
+    `C ${n(right1.x)} ${n(right1.y)} ${n(right2.x)} ${n(right2.y)} ${n(br.x)} ${n(br.y)}`,
+    `C ${n(bottom1.x)} ${n(bottom1.y)} ${n(bottom2.x)} ${n(bottom2.y)} ${n(bl.x)} ${n(bl.y)}`,
+    `C ${n(left1.x)} ${n(left1.y)} ${n(left2.x)} ${n(left2.y)} ${n(tl.x)} ${n(tl.y)} Z`,
+  ].join(" ");
+}
+
+function topHandlePoint(config: MonitorConfig): Point {
+  const { tl, tr } = config.corners;
+  const midpoint = { x: (tl.x + tr.x) / 2, y: (tl.y + tr.y) / 2 };
+  const dx = tr.x - tl.x;
+  const dy = tr.y - tl.y;
+  const length = Math.hypot(dx, dy) || 1;
+  return { x: midpoint.x + dy / length * 3.2, y: midpoint.y - dx / length * 3.2 };
 }
 
 export default function Home() {
+  const sceneRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLVideoElement>(null);
   const loopRef = useRef<HTMLVideoElement>(null);
+  const dragRef = useRef<DragState | null>(null);
   const [started, setStarted] = useState(false);
   const [online, setOnline] = useState(false);
   const [focus, setFocus] = useState<MonitorId | null>(null);
@@ -74,6 +177,7 @@ export default function Home() {
   const [activeMonitor, setActiveMonitor] = useState<MonitorId>("center");
   const [screens, setScreens] = useState<ScreenConfigs>(defaultScreens);
   const [notice, setNotice] = useState("");
+  const [panelSide, setPanelSide] = useState<"left" | "right">("right");
 
   useEffect(() => {
     loopRef.current?.load();
@@ -83,6 +187,68 @@ export default function Home() {
     } catch {
       // Invalid local calibration is ignored and defaults remain active.
     }
+  }, []);
+
+  useEffect(() => {
+    function movePointer(event: PointerEvent) {
+      const drag = dragRef.current;
+      const frame = sceneRef.current;
+      if (!drag || !frame) return;
+
+      event.preventDefault();
+      const rect = frame.getBoundingClientRect();
+      const dx = (event.clientX - drag.startX) / rect.width * 100;
+      const dy = (event.clientY - drag.startY) / rect.height * 100;
+      const next = cloneConfig(drag.config);
+
+      if (drag.mode === "move") {
+        cornerIds.forEach((corner) => {
+          next.corners[corner].x = clamp(drag.config.corners[corner].x + dx, 0, 100);
+          next.corners[corner].y = clamp(drag.config.corners[corner].y + dy, 0, 100);
+        });
+      }
+
+      if (drag.mode === "corner" && drag.corner) {
+        next.corners[drag.corner] = {
+          x: clamp(drag.config.corners[drag.corner].x + dx, 0, 100),
+          y: clamp(drag.config.corners[drag.corner].y + dy, 0, 100),
+        };
+      }
+
+      if (drag.mode === "rotate") {
+        const pointerAngle = Math.atan2(
+          event.clientY - (rect.top + drag.center.y / 100 * rect.height),
+          event.clientX - (rect.left + drag.center.x / 100 * rect.width),
+        ) * 180 / Math.PI;
+        const delta = (pointerAngle - drag.startAngle) * Math.PI / 180;
+        cornerIds.forEach((corner) => {
+          const point = drag.config.corners[corner];
+          const x = point.x - drag.center.x;
+          const y = point.y - drag.center.y;
+          next.corners[corner] = {
+            x: clamp(drag.center.x + x * Math.cos(delta) - y * Math.sin(delta), 0, 100),
+            y: clamp(drag.center.y + x * Math.sin(delta) + y * Math.cos(delta), 0, 100),
+          };
+        });
+      }
+
+      setScreens((current) => ({ ...current, [drag.id]: next }));
+      setNotice("");
+    }
+
+    function stopPointer() {
+      dragRef.current = null;
+      document.body.classList.remove("is-transforming-screen");
+    }
+
+    window.addEventListener("pointermove", movePointer, { passive: false });
+    window.addEventListener("pointerup", stopPointer);
+    window.addEventListener("pointercancel", stopPointer);
+    return () => {
+      window.removeEventListener("pointermove", movePointer);
+      window.removeEventListener("pointerup", stopPointer);
+      window.removeEventListener("pointercancel", stopPointer);
+    };
   }, []);
 
   async function startScene() {
@@ -113,8 +279,40 @@ export default function Home() {
     const loop = loopRef.current;
     if (loop && loop.paused) {
       loop.muted = true;
-      try { await loop.play(); } catch { /* The still frame remains usable for calibration. */ }
+      try { await loop.play(); } catch { /* The still frame remains usable. */ }
     }
+  }
+
+  function beginTransform(
+    event: ReactPointerEvent,
+    id: MonitorId,
+    mode: DragState["mode"],
+    corner?: CornerId,
+  ) {
+    if (!calibrationOpen) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveMonitor(id);
+    const frame = sceneRef.current;
+    if (!frame) return;
+    const rect = frame.getBoundingClientRect();
+    const config = cloneConfig(screens[id]);
+    const center = centerOf(config);
+    const startAngle = Math.atan2(
+      event.clientY - (rect.top + center.y / 100 * rect.height),
+      event.clientX - (rect.left + center.x / 100 * rect.width),
+    ) * 180 / Math.PI;
+    dragRef.current = {
+      id,
+      mode,
+      corner,
+      startX: event.clientX,
+      startY: event.clientY,
+      startAngle,
+      center,
+      config,
+    };
+    document.body.classList.add("is-transforming-screen");
   }
 
   function toggleSound() {
@@ -143,12 +341,12 @@ export default function Home() {
   }
 
   function resetActive() {
-    setScreens((current) => ({ ...current, [activeMonitor]: { ...defaultScreens[activeMonitor] } }));
+    setScreens((current) => ({ ...current, [activeMonitor]: cloneConfig(defaultScreens[activeMonitor]) }));
     setNotice("CURRENT SCREEN RESET");
   }
 
   function resetAll() {
-    setScreens(structuredClone(defaultScreens));
+    setScreens(cloneConfig(defaultScreens));
     window.localStorage.removeItem(STORAGE_KEY);
     setNotice("ALL SCREENS RESET");
   }
@@ -157,6 +355,12 @@ export default function Home() {
     "--focus-x": focus === "left" ? "25%" : focus === "right" ? "75%" : "50%",
     "--focus-y": focus ? "61%" : "50%",
   } as CSSProperties;
+  const activeConfig = screens[activeMonitor];
+  const activeRotationHandle = topHandlePoint(activeConfig);
+  const activeTopMidpoint = {
+    x: (activeConfig.corners.tl.x + activeConfig.corners.tr.x) / 2,
+    y: (activeConfig.corners.tl.y + activeConfig.corners.tr.y) / 2,
+  };
 
   return (
     <main className={`night-shift ${started ? "has-started" : ""} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""} ${calibrationOpen ? "is-calibrating" : ""}`} style={sceneStyle}>
@@ -170,19 +374,19 @@ export default function Home() {
         </defs>
       </svg>
 
-      <div className="scene-frame" aria-label="Evil Larry night surveillance room">
+      <div ref={sceneRef} className="scene-frame" aria-label="Evil Larry night surveillance room">
         <video ref={loopRef} className="room-video loop-video" src="/assets/looped.mp4" preload="auto" playsInline loop muted />
         <video ref={introRef} className="room-video intro-video" src="/assets/intro.mp4" preload="auto" playsInline muted onEnded={handoffToLoop} />
 
         {monitorIds.map((id) => {
           const config = screens[id];
-          const monitorStyle = {
-            left: `${config.x}%`,
-            top: `${config.y}%`,
-            width: `${config.width}%`,
-            height: `${config.height}%`,
-            "--screen-perspective": `${config.perspective}deg`,
-            "--screen-skew": `${config.skew}deg`,
+          const bounds = boundsOf(config);
+          const surfaceStyle = {
+            left: `${bounds.left}%`,
+            top: `${bounds.top}%`,
+            width: `${bounds.width}%`,
+            height: `${bounds.height}%`,
+            "--screen-rotation": `${screenRotation(config)}deg`,
             "--content-scale": config.contentScale,
             "--screen-alpha": config.screenAlpha,
           } as CSSProperties;
@@ -192,20 +396,57 @@ export default function Home() {
               className={`monitor monitor-${id} ${calibrationOpen && activeMonitor === id ? "is-calibration-target" : ""}`}
               key={id}
               type="button"
-              style={monitorStyle}
-              aria-label={calibrationOpen ? `Calibrate ${id} monitor` : `Open ${monitorCopy[id].title}`}
+              aria-label={calibrationOpen ? `Move ${id} monitor mask` : `Open ${monitorCopy[id].title}`}
               onClick={() => calibrationOpen ? setActiveMonitor(id) : online && setFocus(id)}
+              onPointerDown={(event) => calibrationOpen && activeMonitor === id && beginTransform(event, id, "move")}
             >
-              <span className="monitor-glass" />
-              <span className="monitor-static" />
-              <span className="monitor-ui">
-                <span className="monitor-code">{monitorCopy[id].code}</span>
-                <strong>{monitorCopy[id].title}</strong>
-                <span className="monitor-prompt">{calibrationOpen ? "[ SELECTED FOR CALIBRATION ]" : "[ CLICK TO OPEN ]"}</span>
+              <span className="monitor-surface" style={surfaceStyle}>
+                <span className="monitor-glass" />
+                <span className="monitor-static" />
+                <span className="monitor-ui">
+                  <span className="monitor-code">{monitorCopy[id].code}</span>
+                  <strong>{monitorCopy[id].title}</strong>
+                  <span className="monitor-prompt">{calibrationOpen ? "[ DRAG SCREEN TO MOVE ]" : "[ CLICK TO OPEN ]"}</span>
+                </span>
               </span>
             </button>
           );
         })}
+
+        {calibrationOpen && (
+          <div className="transform-layer" aria-label={`Transform ${activeMonitor} monitor`}>
+            <svg className="transform-guides" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <polygon
+                points={cornerIds.map((corner) => `${activeConfig.corners[corner].x},${activeConfig.corners[corner].y}`).join(" ")}
+                vectorEffect="non-scaling-stroke"
+              />
+              <line
+                x1={activeTopMidpoint.x}
+                y1={activeTopMidpoint.y}
+                x2={activeRotationHandle.x}
+                y2={activeRotationHandle.y}
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            {cornerIds.map((corner) => (
+              <button
+                className="transform-handle corner-handle"
+                key={corner}
+                type="button"
+                style={{ left: `${activeConfig.corners[corner].x}%`, top: `${activeConfig.corners[corner].y}%` }}
+                aria-label={`Drag ${corner} corner`}
+                onPointerDown={(event) => beginTransform(event, activeMonitor, "corner", corner)}
+              />
+            ))}
+            <button
+              className="transform-handle rotation-handle"
+              type="button"
+              style={{ left: `${activeRotationHandle.x}%`, top: `${activeRotationHandle.y}%` }}
+              aria-label="Rotate monitor mask"
+              onPointerDown={(event) => beginTransform(event, activeMonitor, "rotate")}
+            />
+          </div>
+        )}
       </div>
 
       <div className="vhs-overlay" aria-hidden="true" />
@@ -253,13 +494,16 @@ export default function Home() {
       )}
 
       {calibrationOpen && (
-        <aside className="calibration-panel" aria-label="Screen calibration controls">
+        <aside className={`calibration-panel dock-${panelSide}`} aria-label="Screen calibration controls">
           <header>
             <div>
-              <p>LIVE SCREEN EDITOR</p>
+              <p>FREE TRANSFORM MODE</p>
               <h2>CALIBRATION</h2>
             </div>
-            <button type="button" onClick={() => setCalibrationOpen(false)} aria-label="Close calibration">×</button>
+            <div className="panel-window-actions">
+              <button type="button" onClick={() => setPanelSide((side) => side === "right" ? "left" : "right")} aria-label="Move panel to other side">⇆</button>
+              <button type="button" onClick={() => setCalibrationOpen(false)} aria-label="Close calibration">×</button>
+            </div>
           </header>
 
           <nav className="monitor-tabs" aria-label="Choose a monitor">
@@ -270,26 +514,33 @@ export default function Home() {
             ))}
           </nav>
 
-          <p className="calibration-hint">Select a screen, then fit its glowing outline to the CRT glass.</p>
-
-          <div className="calibration-controls">
-            {calibrationControls.map((control) => {
-              const value = screens[activeMonitor][control.key];
-              return (
-                <label key={control.key}>
-                  <span>{control.label}<output>{value.toFixed(control.step < .1 ? 2 : 1)}{control.suffix}</output></span>
-                  <input
-                    type="range"
-                    min={control.min}
-                    max={control.max}
-                    step={control.step}
-                    value={value}
-                    onChange={(event) => updateActive(control.key, Number(event.target.value))}
-                  />
-                </label>
-              );
-            })}
+          <div className="direct-manipulation-help">
+            <span><i className="help-corner" /> Drag corners to warp</span>
+            <span><i className="help-rotate" /> Drag circle to rotate</span>
+            <span><i className="help-move" /> Drag inside to move</span>
           </div>
+
+          <details className="advanced-controls">
+            <summary>ADVANCED SCREEN CURVE</summary>
+            <div className="calibration-controls">
+              {calibrationControls.map((control) => {
+                const value = screens[activeMonitor][control.key];
+                return (
+                  <label key={control.key}>
+                    <span>{control.label}<output>{value.toFixed(control.step < .1 ? 2 : 1)}</output></span>
+                    <input
+                      type="range"
+                      min={control.min}
+                      max={control.max}
+                      step={control.step}
+                      value={value}
+                      onChange={(event) => updateActive(control.key, Number(event.target.value))}
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </details>
 
           <div className="calibration-buttons">
             <button type="button" onClick={saveCalibration}>SAVE LOCAL</button>
@@ -297,7 +548,7 @@ export default function Home() {
             <button type="button" onClick={resetActive}>RESET SCREEN</button>
             <button type="button" onClick={resetAll}>RESET ALL</button>
           </div>
-          <p className="calibration-notice">{notice || "Settings are stored only in your browser."}</p>
+          <p className="calibration-notice">{notice || "Drag the frame directly. Settings stay in this browser."}</p>
         </aside>
       )}
     </main>
