@@ -14,12 +14,18 @@ button { font:inherit; }
 .is-online .intro-video { opacity:0; }
 
 .monitor { position:absolute; z-index:3; inset:0; display:block; width:100%; height:100%; padding:0; overflow:hidden; color:#cce3bb; border:0; border-radius:0; background:transparent; opacity:0; cursor:pointer; pointer-events:none; transition:opacity 180ms ease,filter 180ms ease; }
-.is-online .monitor { opacity:1; pointer-events:auto; animation:screenBoot 900ms steps(2) both; }
+.is-online .monitor { opacity:1; pointer-events:auto; }
 .monitor:hover,.monitor:focus-visible { filter:brightness(1.45) drop-shadow(0 0 12px rgba(161,215,140,.35)); outline:none; }
 .monitor-left { clip-path:url(#left-crt-mask); -webkit-clip-path:url(#left-crt-mask); }
 .monitor-center { clip-path:url(#center-crt-mask); -webkit-clip-path:url(#center-crt-mask); }
 .monitor-right { clip-path:url(#right-crt-mask); -webkit-clip-path:url(#right-crt-mask); }
-.monitor-surface { position:absolute; z-index:1; display:grid; place-items:center; overflow:hidden; background:rgb(3 10 6 / var(--screen-alpha,.24)); box-shadow:inset 0 0 24px rgba(0,0,0,.3); }
+.monitor-surface { position:absolute; z-index:1; display:grid; place-items:center; overflow:hidden; background:rgb(3 10 6 / var(--screen-alpha,.24)); box-shadow:inset 0 0 24px rgba(0,0,0,.3); transform-origin:center; }
+.monitor-surface::after { content:""; position:absolute; z-index:5; left:-8%; right:-8%; top:49%; height:2%; opacity:0; background:#e6f4df; box-shadow:0 0 8px #d8f0d0,0 0 18px rgba(202,235,190,.9); pointer-events:none; }
+.is-online .monitor-surface { animation:crtPowerOn 560ms cubic-bezier(.2,.76,.2,1) both; }
+.is-online .monitor-surface::after { animation:crtFlash 560ms ease-out both; }
+.is-online .monitor-center .monitor-surface,.is-online .monitor-center .monitor-surface::after { animation-delay:0ms; }
+.is-online .monitor-left .monitor-surface,.is-online .monitor-left .monitor-surface::after { animation-delay:70ms; }
+.is-online .monitor-right .monitor-surface,.is-online .monitor-right .monitor-surface::after { animation-delay:140ms; }
 .monitor-glass,.monitor-static { position:absolute; inset:0; pointer-events:none; }
 .monitor-glass { z-index:3; background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.46) 100%),linear-gradient(120deg,rgba(255,255,255,.035),transparent 28%); box-shadow:inset 0 0 14px rgba(0,0,0,.42); }
 .monitor-static { z-index:1; opacity:.28; background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(165,210,150,.035) 0 1px,transparent 1px 3px); animation:scan 4s linear infinite; }
@@ -63,7 +69,8 @@ button { font:inherit; }
 .focus-placeholder strong { font-size:clamp(12px,2vw,18px); letter-spacing:.1em; }
 .focus-noise { position:absolute; z-index:1; inset:-30%; opacity:.12; background:repeating-radial-gradient(circle,transparent 0 2px,rgba(202,230,188,.16) 3px 4px); animation:noiseMove 180ms steps(2) infinite; }
 
-@keyframes screenBoot { 0%{opacity:0;filter:brightness(4)} 35%{opacity:1;filter:brightness(2.2)} 100%{opacity:1;filter:brightness(1)} }
+@keyframes crtPowerOn { 0%{opacity:0;filter:brightness(7);transform:scaleX(.12) scaleY(.01)} 18%{opacity:1;filter:brightness(8);transform:scaleX(1) scaleY(.012)} 48%{filter:brightness(2.7);transform:scaleX(1) scaleY(1.05)} 62%{filter:brightness(1.7);transform:scaleX(1) scaleY(.86)} 77%{filter:brightness(1.25);transform:scaleX(1) scaleY(1.025)} 100%{opacity:1;filter:brightness(1);transform:scaleX(1) scaleY(1)} }
+@keyframes crtFlash { 0%,12%{opacity:0;transform:scaleX(.15)} 20%{opacity:1;transform:scaleX(1)} 48%{opacity:.72;transform:scaleX(1)} 68%,100%{opacity:0;transform:scaleX(1)} }
 @keyframes scan { from{background-position:0 0,0 0} to{background-position:0 18px,11px 0} }
 @keyframes vhsFlicker { 0%,100%{opacity:.18;transform:translateX(0)} 50%{opacity:.24;transform:translateX(.5px)} }
 @keyframes panelIn { 0%{opacity:0;transform:scaleY(.03);filter:brightness(4)} 55%{opacity:1;transform:scaleY(.03)} 100%{opacity:1;transform:scaleY(1);filter:brightness(1)} }

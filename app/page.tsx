@@ -131,6 +131,7 @@ function makeMaskPath(config: MonitorConfig) {
 export default function Home() {
   const introRef = useRef<HTMLVideoElement>(null);
   const loopRef = useRef<HTMLVideoElement>(null);
+  const handoffStartedRef = useRef(false);
   const [started, setStarted] = useState(false);
   const [online, setOnline] = useState(false);
   const [focus, setFocus] = useState<MonitorId | null>(null);
@@ -143,12 +144,16 @@ export default function Home() {
   async function startScene() {
     const intro = introRef.current;
     if (!intro || started) return;
+    handoffStartedRef.current = false;
     setStarted(true);
     intro.muted = !sound;
     try { await intro.play(); } catch { intro.muted = true; await intro.play(); }
   }
 
   async function handoffToLoop() {
+    if (handoffStartedRef.current) return;
+    handoffStartedRef.current = true;
+    introRef.current?.pause();
     const loop = loopRef.current;
     if (!loop) { setOnline(true); return; }
     loop.currentTime = 0;
@@ -157,6 +162,11 @@ export default function Home() {
     const reveal = () => setOnline(true);
     if ("requestVideoFrameCallback" in loop) loop.requestVideoFrameCallback(reveal);
     else requestAnimationFrame(reveal);
+  }
+
+  function finishIntroEarly() {
+    const intro = introRef.current;
+    if (intro && intro.currentTime >= 2.65) void handoffToLoop();
   }
 
   function toggleSound() {
@@ -185,7 +195,7 @@ export default function Home() {
 
       <div className="scene-frame" aria-label="Evil Larry night surveillance room">
         <video ref={loopRef} className="room-video loop-video" src="/assets/looped.mp4" preload="auto" playsInline loop muted />
-        <video ref={introRef} className="room-video intro-video" src="/assets/intro.mp4" preload="auto" playsInline muted onEnded={handoffToLoop} />
+        <video ref={introRef} className="room-video intro-video" src="/assets/intro.mp4" preload="auto" playsInline muted onTimeUpdate={finishIntroEarly} onEnded={handoffToLoop} />
 
         {monitorIds.map((id) => {
           const config = screens[id];
