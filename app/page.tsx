@@ -10,30 +10,34 @@ import {
 
 type MonitorId = "left" | "center" | "right";
 type CornerId = "tl" | "tr" | "br" | "bl";
+type SideId = "top" | "right" | "bottom" | "left";
 type Point = { x: number; y: number };
 type MonitorConfig = {
   corners: Record<CornerId, Point>;
-  curveX: number;
-  curveY: number;
+  curveTop: number;
+  curveRight: number;
+  curveBottom: number;
+  curveLeft: number;
   contentScale: number;
   screenAlpha: number;
 };
 type ScreenConfigs = Record<MonitorId, MonitorConfig>;
-type NumericConfigKey = "curveX" | "curveY" | "contentScale" | "screenAlpha";
+type CurveConfigKey = "curveTop" | "curveRight" | "curveBottom" | "curveLeft";
+type NumericConfigKey = CurveConfigKey | "contentScale" | "screenAlpha";
 type DragState = {
   id: MonitorId;
-  mode: "move" | "corner" | "rotate";
+  mode: "move" | "corner" | "curve";
   corner?: CornerId;
+  side?: SideId;
   startX: number;
   startY: number;
-  startAngle: number;
-  center: Point;
   config: MonitorConfig;
 };
 
-const STORAGE_KEY = "evil-larry-screen-calibration-v2";
+const STORAGE_KEY = "evil-larry-screen-calibration-v3";
 const monitorIds: MonitorId[] = ["left", "center", "right"];
 const cornerIds: CornerId[] = ["tl", "tr", "br", "bl"];
+const sideIds: SideId[] = ["top", "right", "bottom", "left"];
 
 const defaultScreens: ScreenConfigs = {
   left: {
@@ -43,8 +47,10 @@ const defaultScreens: ScreenConfigs = {
       br: { x: 29.45, y: 71.15 },
       bl: { x: 18.9, y: 71.25 },
     },
-    curveX: 8,
-    curveY: 8,
+    curveTop: 8,
+    curveRight: 8,
+    curveBottom: 8,
+    curveLeft: 8,
     contentScale: 1,
     screenAlpha: .24,
   },
@@ -55,8 +61,10 @@ const defaultScreens: ScreenConfigs = {
       br: { x: 56.6, y: 65.5 },
       bl: { x: 45.1, y: 65.5 },
     },
-    curveX: 8,
-    curveY: 6,
+    curveTop: 6,
+    curveRight: 8,
+    curveBottom: 6,
+    curveLeft: 8,
     contentScale: 1,
     screenAlpha: .24,
   },
@@ -67,8 +75,10 @@ const defaultScreens: ScreenConfigs = {
       br: { x: 81.05, y: 71.05 },
       bl: { x: 70.85, y: 71.1 },
     },
-    curveX: 8,
-    curveY: 8,
+    curveTop: 8,
+    curveRight: 8,
+    curveBottom: 8,
+    curveLeft: 8,
     contentScale: 1,
     screenAlpha: .24,
   },
@@ -81,8 +91,10 @@ const monitorCopy: Record<MonitorId, { code: string; title: string; detail: stri
 };
 
 const calibrationControls: Array<{ key: NumericConfigKey; label: string; min: number; max: number; step: number }> = [
-  { key: "curveX", label: "Horizontal bend", min: -20, max: 20, step: .25 },
-  { key: "curveY", label: "Vertical bend", min: -20, max: 20, step: .25 },
+  { key: "curveTop", label: "Top bend", min: -40, max: 40, step: .25 },
+  { key: "curveRight", label: "Right bend", min: -40, max: 40, step: .25 },
+  { key: "curveBottom", label: "Bottom bend", min: -40, max: 40, step: .25 },
+  { key: "curveLeft", label: "Left bend", min: -40, max: 40, step: .25 },
   { key: "contentScale", label: "Content scale", min: .65, max: 1.35, step: .01 },
   { key: "screenAlpha", label: "Screen opacity", min: 0, max: .8, step: .01 },
 ];
@@ -97,14 +109,6 @@ function clamp(value: number, min: number, max: number) {
 
 function distance(a: Point, b: Point) {
   return Math.hypot(b.x - a.x, b.y - a.y);
-}
-
-function centerOf(config: MonitorConfig): Point {
-  const points = cornerIds.map((corner) => config.corners[corner]);
-  return {
-    x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
-    y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
-  };
 }
 
 function boundsOf(config: MonitorConfig) {
@@ -134,17 +138,26 @@ function edgeControls(a: Point, b: Point, strength: number) {
   ];
 }
 
-function makeMaskPath(config: MonitorConfig) {
+function curveGeometry(config: MonitorConfig) {
   const { tl, tr, br, bl } = config.corners;
   const averageWidth = (distance(tl, tr) + distance(bl, br)) / 2;
   const averageHeight = (distance(tl, bl) + distance(tr, br)) / 2;
-  const horizontalStrength = averageWidth * config.curveX / 100;
-  const verticalStrength = averageHeight * config.curveY / 100;
-  const [top1, top2] = edgeControls(tl, tr, verticalStrength);
-  const [right1, right2] = edgeControls(tr, br, horizontalStrength);
-  const [bottom1, bottom2] = edgeControls(br, bl, verticalStrength);
-  const [left1, left2] = edgeControls(bl, tl, horizontalStrength);
-  const n = (value: number) => (value / 100).toFixed(5);
+  const strengths: Record<SideId, number> = {
+    top: averageHeight * config.curveTop / 100,
+    right: averageWidth * config.curveRight / 100,
+    bottom: averageHeight * config.curveBottom / 100,
+    left: averageWidth * config.curveLeft / 100,
+  };
+  const [top1, top2] = edgeControls(tl, tr, strengths.top);
+  const [right1, right2] = edgeControls(tr, br, strengths.right);
+  const [bottom1, bottom2] = edgeControls(br, bl, strengths.bottom);
+  const [left1, left2] = edgeControls(bl, tl, strengths.left);
+  return { tl, tr, br, bl, top1, top2, right1, right2, bottom1, bottom2, left1, left2, strengths, averageWidth, averageHeight };
+}
+
+function makeScreenPath(config: MonitorConfig, normalized: boolean) {
+  const { tl, tr, br, bl, top1, top2, right1, right2, bottom1, bottom2, left1, left2 } = curveGeometry(config);
+  const n = (value: number) => normalized ? (value / 100).toFixed(5) : value.toFixed(3);
 
   return [
     `M ${n(tl.x)} ${n(tl.y)}`,
@@ -155,13 +168,30 @@ function makeMaskPath(config: MonitorConfig) {
   ].join(" ");
 }
 
-function topHandlePoint(config: MonitorConfig): Point {
-  const { tl, tr } = config.corners;
-  const midpoint = { x: (tl.x + tr.x) / 2, y: (tl.y + tr.y) / 2 };
-  const dx = tr.x - tl.x;
-  const dy = tr.y - tl.y;
+function makeMaskPath(config: MonitorConfig) {
+  return makeScreenPath(config, true);
+}
+
+function sideEdge(config: MonitorConfig, side: SideId): [Point, Point] {
+  const { tl, tr, br, bl } = config.corners;
+  if (side === "top") return [tl, tr];
+  if (side === "right") return [tr, br];
+  if (side === "bottom") return [br, bl];
+  return [bl, tl];
+}
+
+function sideHandlePoint(config: MonitorConfig, side: SideId): Point {
+  const [a, b] = sideEdge(config, side);
+  const midpoint = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
   const length = Math.hypot(dx, dy) || 1;
-  return { x: midpoint.x + dy / length * 3.2, y: midpoint.y - dx / length * 3.2 };
+  const normal = { x: dy / length, y: -dx / length };
+  const strength = curveGeometry(config).strengths[side];
+  return {
+    x: midpoint.x + normal.x * strength * .75,
+    y: midpoint.y + normal.y * strength * .75,
+  };
 }
 
 export default function Home() {
@@ -215,21 +245,22 @@ export default function Home() {
         };
       }
 
-      if (drag.mode === "rotate") {
-        const pointerAngle = Math.atan2(
-          event.clientY - (rect.top + drag.center.y / 100 * rect.height),
-          event.clientX - (rect.left + drag.center.x / 100 * rect.width),
-        ) * 180 / Math.PI;
-        const delta = (pointerAngle - drag.startAngle) * Math.PI / 180;
-        cornerIds.forEach((corner) => {
-          const point = drag.config.corners[corner];
-          const x = point.x - drag.center.x;
-          const y = point.y - drag.center.y;
-          next.corners[corner] = {
-            x: clamp(drag.center.x + x * Math.cos(delta) - y * Math.sin(delta), 0, 100),
-            y: clamp(drag.center.y + x * Math.sin(delta) + y * Math.cos(delta), 0, 100),
-          };
-        });
+      if (drag.mode === "curve" && drag.side) {
+        const pointer = {
+          x: (event.clientX - rect.left) / rect.width * 100,
+          y: (event.clientY - rect.top) / rect.height * 100,
+        };
+        const [a, b] = sideEdge(drag.config, drag.side);
+        const midpoint = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const edgeX = b.x - a.x;
+        const edgeY = b.y - a.y;
+        const edgeLength = Math.hypot(edgeX, edgeY) || 1;
+        const normal = { x: edgeY / edgeLength, y: -edgeX / edgeLength };
+        const projection = (pointer.x - midpoint.x) * normal.x + (pointer.y - midpoint.y) * normal.y;
+        const geometry = curveGeometry(drag.config);
+        const base = drag.side === "top" || drag.side === "bottom" ? geometry.averageHeight : geometry.averageWidth;
+        const key = `curve${drag.side[0].toUpperCase()}${drag.side.slice(1)}` as CurveConfigKey;
+        next[key] = clamp(projection / (.75 * base) * 100, -40, 40);
       }
 
       setScreens((current) => ({ ...current, [drag.id]: next }));
@@ -288,6 +319,7 @@ export default function Home() {
     id: MonitorId,
     mode: DragState["mode"],
     corner?: CornerId,
+    side?: SideId,
   ) {
     if (!calibrationOpen) return;
     event.preventDefault();
@@ -295,21 +327,14 @@ export default function Home() {
     setActiveMonitor(id);
     const frame = sceneRef.current;
     if (!frame) return;
-    const rect = frame.getBoundingClientRect();
     const config = cloneConfig(screens[id]);
-    const center = centerOf(config);
-    const startAngle = Math.atan2(
-      event.clientY - (rect.top + center.y / 100 * rect.height),
-      event.clientX - (rect.left + center.x / 100 * rect.width),
-    ) * 180 / Math.PI;
     dragRef.current = {
       id,
       mode,
       corner,
+      side,
       startX: event.clientX,
       startY: event.clientY,
-      startAngle,
-      center,
       config,
     };
     document.body.classList.add("is-transforming-screen");
@@ -356,11 +381,6 @@ export default function Home() {
     "--focus-y": focus ? "61%" : "50%",
   } as CSSProperties;
   const activeConfig = screens[activeMonitor];
-  const activeRotationHandle = topHandlePoint(activeConfig);
-  const activeTopMidpoint = {
-    x: (activeConfig.corners.tl.x + activeConfig.corners.tr.x) / 2,
-    y: (activeConfig.corners.tl.y + activeConfig.corners.tr.y) / 2,
-  };
 
   return (
     <main className={`night-shift ${started ? "has-started" : ""} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""} ${calibrationOpen ? "is-calibrating" : ""}`} style={sceneStyle}>
@@ -416,17 +436,7 @@ export default function Home() {
         {calibrationOpen && (
           <div className="transform-layer" aria-label={`Transform ${activeMonitor} monitor`}>
             <svg className="transform-guides" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-              <polygon
-                points={cornerIds.map((corner) => `${activeConfig.corners[corner].x},${activeConfig.corners[corner].y}`).join(" ")}
-                vectorEffect="non-scaling-stroke"
-              />
-              <line
-                x1={activeTopMidpoint.x}
-                y1={activeTopMidpoint.y}
-                x2={activeRotationHandle.x}
-                y2={activeRotationHandle.y}
-                vectorEffect="non-scaling-stroke"
-              />
+              <path d={makeScreenPath(activeConfig, false)} vectorEffect="non-scaling-stroke" />
             </svg>
             {cornerIds.map((corner) => (
               <button
@@ -438,13 +448,19 @@ export default function Home() {
                 onPointerDown={(event) => beginTransform(event, activeMonitor, "corner", corner)}
               />
             ))}
-            <button
-              className="transform-handle rotation-handle"
-              type="button"
-              style={{ left: `${activeRotationHandle.x}%`, top: `${activeRotationHandle.y}%` }}
-              aria-label="Rotate monitor mask"
-              onPointerDown={(event) => beginTransform(event, activeMonitor, "rotate")}
-            />
+            {sideIds.map((side) => {
+              const point = sideHandlePoint(activeConfig, side);
+              return (
+                <button
+                  className={`transform-handle side-handle side-${side}`}
+                  key={side}
+                  type="button"
+                  style={{ left: `${point.x}%`, top: `${point.y}%` }}
+                  aria-label={`Bend ${side} edge`}
+                  onPointerDown={(event) => beginTransform(event, activeMonitor, "curve", undefined, side)}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -497,7 +513,7 @@ export default function Home() {
         <aside className={`calibration-panel dock-${panelSide}`} aria-label="Screen calibration controls">
           <header>
             <div>
-              <p>FREE TRANSFORM MODE</p>
+              <p>FREE WARP MODE</p>
               <h2>CALIBRATION</h2>
             </div>
             <div className="panel-window-actions">
@@ -516,7 +532,7 @@ export default function Home() {
 
           <div className="direct-manipulation-help">
             <span><i className="help-corner" /> Drag corners to warp</span>
-            <span><i className="help-rotate" /> Drag circle to rotate</span>
+            <span><i className="help-curve" /> Drag side handles to bend</span>
             <span><i className="help-move" /> Drag inside to move</span>
           </div>
 
