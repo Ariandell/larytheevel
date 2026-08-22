@@ -526,18 +526,52 @@ export default function Home() {
               <div className="system-window">
                 <header><span>LARRY_OS / {activeApp.label}</span><i>□ ×</i></header>
                 <div className="system-window-body">
-                  <p>&gt; OPENING {activeApp.id.toUpperCase()}.EXE</p>
-                  <strong>{activeApp.detail}</strong>
-                  {activeApp.id === "lore" && (
-                    <div className="larry-lore">
-                      <span><i>2024</i> FIRST RECORDED SCARIEST-STORIES SIGHTINGS</span>
-                      <span><i>TYPE</i> BLACK ORIENTAL SHORTHAIR</span>
-                      <span><i>ROLE</i> EVIL ENTITY / UNCONFIRMED</span>
-                      <a href="https://knowyourmeme.com/memes/larry-the-cat" target="_blank" rel="noreferrer">OPEN EXTERNAL MEME FILE ↗</a>
-                    </div>
+                  {activeApp.id === "lore" ? (
+                    <article className="lore-dossier">
+                      <header>
+                        <p>&gt; DECRYPTING LARRY.DAT</p>
+                        <span>CLASSIFIED / EYES ONLY</span>
+                      </header>
+                      <div className="lore-hero">
+                        <img src="/assets/larry-meme-original.jpg" alt="Original Larry meme sighting" />
+                        <div>
+                          <small>SUBJECT 001</small>
+                          <h3>LARRY</h3>
+                          <p>BLACK ORIENTAL SHORTHAIR<br />THREAT CLASS: UNDEFINED<br />CURRENT LOCATION: YOUR SCREEN</p>
+                        </div>
+                      </div>
+                      <section>
+                        <span>01 / THE ORIGIN</span>
+                        <p>Larry surfaced in late 2024 through short scary-stories edits: an unnervingly direct stare, an ordinary room, and the feeling that the cat already knew who was watching. The internet gave him a name. The cameras gave him a way in.</p>
+                      </section>
+                      <section>
+                        <span>02 / THE NIGHT-SHIFT FILE</span>
+                        <p>Every confirmed encounter begins the same way. A security camera locks onto an empty room. The battery drains without warning. When the feed dies, Larry is no longer inside the recording — he is standing behind the camera. No operator has completed the shift without using the respawn terminal.</p>
+                      </section>
+                      <div className="incident-log">
+                        <span><i>00:02:18</i> CAMERA SIGNAL ACQUIRED</span>
+                        <span><i>00:02:19</i> BATTERY FAILURE DETECTED</span>
+                        <span><i>00:02:21</i> UNKNOWN SUBJECT APPROACHING</span>
+                        <span><i>00:02:24</i> OPERATOR STATUS: YOU DIED</span>
+                      </div>
+                      <section>
+                        <span>03 / RECOVERED EVIDENCE</span>
+                        <div className="lore-gallery">
+                          <figure><img src="/assets/larry-evil.gif" alt="Evil Larry sighting" /><figcaption>EVIL FORM</figcaption></figure>
+                          <figure><img src="/assets/larry-spooky.gif" alt="Spooky Larry sighting" /><figcaption>SPOOKY FORM</figcaption></figure>
+                          <figure><img src="/assets/larry-dark-plate-v1.png" alt="Night-shift Larry sighting" /><figcaption>NIGHT-SHIFT FORM</figcaption></figure>
+                        </div>
+                      </section>
+                      <blockquote>IF LARRY IS VISIBLE, HE HAS ALREADY SEEN YOU.</blockquote>
+                    </article>
+                  ) : (
+                    <>
+                      <p>&gt; OPENING {activeApp.id.toUpperCase()}.EXE</p>
+                      <strong>{activeApp.detail}</strong>
+                      <div className="system-lines"><i /><i /><i /></div>
+                      <small>STATUS: STANDBY&nbsp;&nbsp;|&nbsp;&nbsp;ACCESS: PUBLIC</small>
+                    </>
                   )}
-                  <div className="system-lines"><i /><i /><i /></div>
-                  <small>STATUS: STANDBY&nbsp;&nbsp;|&nbsp;&nbsp;ACCESS: PUBLIC</small>
                 </div>
               </div>
             </div>
