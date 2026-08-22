@@ -24,6 +24,8 @@ type ArchiveItem = {
   style: string;
   source: string;
   tone: number;
+  credit?: string;
+  sourceUrl?: string;
 };
 
 const monitorIds: MonitorId[] = ["left", "center", "right"];
@@ -32,8 +34,8 @@ const introTiming = {
   battery: 1000,
   powerOff: 2400,
   larry: 3000,
-  died: 8460,
-  respawn: 16520,
+  died: 6707,
+  respawn: 14764,
 };
 
 // Final monitor geometry captured from the approved on-page calibration.
@@ -99,10 +101,12 @@ const desktopApps = [
 const generatorStyles = ["NIGHT WATCH", "CURSED ID", "MEME LORD", "VOID ICON"];
 
 const initialArchive: ArchiveItem[] = [
+  { id: 404, name: "ORIGINAL_SIGHTING", style: "INTERNET ARCHIVE", source: "/assets/larry-meme-original.jpg", tone: 0, credit: "PINTEREST ARCHIVE", sourceUrl: "https://www.pinterest.com/ideas/larry-the-cat-meme/933522008976/" },
+  { id: 369, name: "EVIL_LARRY", style: "REACTION FILE", source: "/assets/larry-evil.gif", tone: 1, credit: "TENOR", sourceUrl: "https://tenor.com/view/evil-larry-larry-gif-431258253732208458" },
+  { id: 333, name: "SPOOKY_LARRY", style: "SCARIEST STORIES", source: "/assets/larry-spooky.gif", tone: 2, credit: "TENOR", sourceUrl: "https://tenor.com/view/larry-spooky-larry-gif-4391033182720544051" },
   { id: 301, name: "LARRY_0301", style: "NIGHT WATCH", source: "/assets/larry-dark-plate-v1.png", tone: 0 },
   { id: 245, name: "LARRY_0245", style: "CURSED ID", source: "/assets/larry-dark-plate-v1.png", tone: 1 },
   { id: 119, name: "LARRY_0119", style: "VOID ICON", source: "/assets/larry-dark-plate-v1.png", tone: 2 },
-  { id: 66, name: "LARRY_0066", style: "MEME LORD", source: "/assets/larry-dark-plate-v1.png", tone: 3 },
 ];
 
 function distance(a: Point, b: Point) {
@@ -355,6 +359,7 @@ export default function Home() {
   } as CSSProperties;
   const activeApp = desktopApps.find((app) => app.id === selectedApp) || desktopApps[0];
   const activeArchive = archiveItems.find((item) => item.id === selectedArchive) || archiveItems[0];
+  const activeArchiveExtension = activeArchive.source.split(".").pop() || "png";
 
   return (
     <main className={`night-shift phase-${phase} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""}`} style={sceneStyle}>
@@ -478,7 +483,7 @@ export default function Home() {
 
       <audio ref={batteryAudioRef} src="/assets/audio/battery-warning.mp3" preload="auto" />
       <audio ref={cameraOffAudioRef} src="/assets/audio/camera-power-off.mp3" preload="auto" />
-      <audio ref={larryAudioRef} src="/assets/audio/larry-theme.mp3" preload="auto" />
+      <audio ref={larryAudioRef} src="/assets/audio/larry-theme-synced.mp3" preload="auto" />
       <audio ref={deathAudioRef} src="/assets/audio/you-died.mp3" preload="auto" />
       <audio ref={monitorAudioRef} src="/assets/audio/monitor-power-on.mp3" preload="auto" />
       <audio ref={monitorOpenAudioRef} src="/assets/audio/monitor-open.wav" preload="auto" />
@@ -523,6 +528,14 @@ export default function Home() {
                 <div className="system-window-body">
                   <p>&gt; OPENING {activeApp.id.toUpperCase()}.EXE</p>
                   <strong>{activeApp.detail}</strong>
+                  {activeApp.id === "lore" && (
+                    <div className="larry-lore">
+                      <span><i>2024</i> FIRST RECORDED SCARIEST-STORIES SIGHTINGS</span>
+                      <span><i>TYPE</i> BLACK ORIENTAL SHORTHAIR</span>
+                      <span><i>ROLE</i> EVIL ENTITY / UNCONFIRMED</span>
+                      <a href="https://knowyourmeme.com/memes/larry-the-cat" target="_blank" rel="noreferrer">OPEN EXTERNAL MEME FILE ↗</a>
+                    </div>
+                  )}
                   <div className="system-lines"><i /><i /><i /></div>
                   <small>STATUS: STANDBY&nbsp;&nbsp;|&nbsp;&nbsp;ACCESS: PUBLIC</small>
                 </div>
@@ -572,7 +585,8 @@ export default function Home() {
                 </div>
                 <div><span>FILE</span><strong>{activeArchive.name}.PNG</strong></div>
                 <div><span>PROFILE</span><strong>{activeArchive.style}</strong></div>
-                <a href={activeArchive.source} download={`${activeArchive.name}.png`}>DOWNLOAD FILE</a>
+                <div><span>SOURCE</span>{activeArchive.sourceUrl ? <a href={activeArchive.sourceUrl} target="_blank" rel="noreferrer">{activeArchive.credit} ↗</a> : <strong>LOCAL RECOVERY</strong>}</div>
+                <a href={activeArchive.source} download={`${activeArchive.name}.${activeArchiveExtension}`}>DOWNLOAD FILE</a>
               </div>
               <div className="archive-browser">
                 <header><span>RECOVERED GENERATIONS</span><small>{archiveItems.length} FILES</small></header>
