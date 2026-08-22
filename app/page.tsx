@@ -3,6 +3,7 @@
 import { CSSProperties, useEffect, useRef, useState } from "react";
 
 type MonitorId = "left" | "center" | "right";
+type IntroPhase = "idle" | "camera" | "blackout" | "larry" | "glitch" | "office";
 type CornerId = "tl" | "tr" | "br" | "bl";
 type SideId = "top" | "right" | "bottom" | "left";
 type Point = { x: number; y: number };
@@ -131,42 +132,85 @@ function makeMaskPath(config: MonitorConfig) {
 export default function Home() {
   const introRef = useRef<HTMLVideoElement>(null);
   const loopRef = useRef<HTMLVideoElement>(null);
-  const handoffStartedRef = useRef(false);
+  const officeStartedRef = useRef(false);
+  const phaseTimersRef = useRef<number[]>([]);
   const [started, setStarted] = useState(false);
   const [online, setOnline] = useState(false);
+  const [phase, setPhase] = useState<IntroPhase>("idle");
   const [focus, setFocus] = useState<MonitorId | null>(null);
   const [sound, setSound] = useState(false);
 
   useEffect(() => {
     loopRef.current?.load();
+    const larryPreload = new window.Image();
+    larryPreload.src = "/assets/larry-dark-plate-v1.png";
+    return () => phaseTimersRef.current.forEach(window.clearTimeout);
   }, []);
 
   async function startScene() {
     const intro = introRef.current;
     if (!intro || started) return;
-    handoffStartedRef.current = false;
+    officeStartedRef.current = false;
     setStarted(true);
+    setPhase("camera");
+    intro.currentTime = 0;
     intro.muted = !sound;
     try { await intro.play(); } catch { intro.muted = true; await intro.play(); }
+
+    phaseTimersRef.current = [
+      window.setTimeout(() => {
+        intro.pause();
+        setPhase("blackout");
+      }, 2400),
+      window.setTimeout(() => setPhase("larry"), 2800),
+      window.setTimeout(() => setPhase("glitch"), 5350),
+      window.setTimeout(() => void startOffice(), 6100),
+    ];
   }
 
-  async function handoffToLoop() {
-    if (handoffStartedRef.current) return;
-    handoffStartedRef.current = true;
+  function clearPhaseTimers() {
+    phaseTimersRef.current.forEach(window.clearTimeout);
+    phaseTimersRef.current = [];
+  }
+
+  async function startOffice() {
+    if (officeStartedRef.current) return;
+    officeStartedRef.current = true;
+    clearPhaseTimers();
     introRef.current?.pause();
     const loop = loopRef.current;
-    if (!loop) { setOnline(true); return; }
+    if (!loop) {
+      setPhase("office");
+      setOnline(true);
+      return;
+    }
     loop.currentTime = 0;
     loop.muted = !sound;
-    try { await loop.play(); } catch { loop.muted = true; await loop.play(); }
-    const reveal = () => setOnline(true);
-    if ("requestVideoFrameCallback" in loop) loop.requestVideoFrameCallback(reveal);
+    let loopIsPlaying = false;
+    try {
+      await loop.play();
+      loopIsPlaying = true;
+    } catch {
+      loop.muted = true;
+      try {
+        await loop.play();
+        loopIsPlaying = true;
+      } catch { /* The first loop frame remains visible. */ }
+    }
+    const reveal = () => {
+      setPhase("office");
+      setOnline(true);
+    };
+    if (loopIsPlaying && "requestVideoFrameCallback" in loop) loop.requestVideoFrameCallback(reveal);
     else requestAnimationFrame(reveal);
   }
 
-  function finishIntroEarly() {
-    const intro = introRef.current;
-    if (intro && intro.currentTime >= 2.65) void handoffToLoop();
+  function skipIntro() {
+    if (phase === "office" || phase === "idle") return;
+    clearPhaseTimers();
+    introRef.current?.pause();
+    setPhase("glitch");
+    phaseTimersRef.current = [window.setTimeout(() => void startOffice(), 260)];
   }
 
   function toggleSound() {
@@ -182,7 +226,7 @@ export default function Home() {
   } as CSSProperties;
 
   return (
-    <main className={`night-shift ${started ? "has-started" : ""} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""}`} style={sceneStyle}>
+    <main className={`night-shift phase-${phase} ${started ? "has-started" : ""} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""}`} style={sceneStyle}>
       <svg className="screen-mask-defs" aria-hidden="true" focusable="false">
         <defs>
           {monitorIds.map((id) => (
@@ -195,7 +239,7 @@ export default function Home() {
 
       <div className="scene-frame" aria-label="Evil Larry night surveillance room">
         <video ref={loopRef} className="room-video loop-video" src="/assets/looped.mp4" preload="auto" playsInline loop muted />
-        <video ref={introRef} className="room-video intro-video" src="/assets/intro.mp4" preload="auto" playsInline muted onTimeUpdate={finishIntroEarly} onEnded={handoffToLoop} />
+        <video ref={introRef} className="room-video intro-video" src="/assets/intro.mp4" preload="auto" playsInline muted />
 
         {monitorIds.map((id) => {
           const config = screens[id];
@@ -234,6 +278,57 @@ export default function Home() {
 
       <div className="vhs-overlay" aria-hidden="true" />
       <div className="vignette" aria-hidden="true" />
+
+      {started && phase !== "office" && (
+        <section className={`cold-open cold-open-${phase}`} aria-live="polite">
+          {phase === "camera" && (
+            <div className="camera-interface">
+              <div className="camera-corner camera-corner-tl" />
+              <div className="camera-corner camera-corner-tr" />
+              <div className="camera-corner camera-corner-bl" />
+              <div className="camera-corner camera-corner-br" />
+              <div className="camera-topline">
+                <span><i className="record-dot" /> REC / CAM-00</span>
+                <span className="battery-status">LOW BATTERY <i className="battery-shell"><i /></i></span>
+              </div>
+              <div className="camera-reticle"><i /><i /></div>
+              <div className="camera-boot-copy">
+                <strong>INITIALIZING NIGHT FEED</strong>
+                <span>[ UNSTABLE POWER SOURCE ]</span>
+              </div>
+              <div className="camera-bottomline"><span>ISO 6400</span><span>00:00:02:18</span><span>F2.8</span></div>
+            </div>
+          )}
+
+          {phase === "blackout" && (
+            <div className="blackout-copy">
+              <span>POWER SOURCE DEPLETED</span>
+              <strong>CAMERA OFFLINE</strong>
+            </div>
+          )}
+
+          {phase === "larry" && (
+            <div className="larry-reveal" aria-label="Larry emerging from darkness">
+              <img className="larry-layer larry-body-layer" src="/assets/larry-dark-plate-v1.png" alt="" />
+              <img className="larry-layer larry-head-layer" src="/assets/larry-dark-plate-v1.png" alt="" />
+              <img className="larry-layer larry-eye-layer larry-eye-left" src="/assets/larry-dark-plate-v1.png" alt="" />
+              <img className="larry-layer larry-eye-layer larry-eye-right" src="/assets/larry-dark-plate-v1.png" alt="" />
+              <div className="larry-light" />
+              <span className="larry-camera-code">UNKNOWN SUBJECT / 0.6M</span>
+            </div>
+          )}
+
+          {phase === "glitch" && (
+            <div className="glitch-screen">
+              <span>SIGNAL LOST</span>
+              <strong>REBOOTING SECURITY NETWORK</strong>
+              <i />
+            </div>
+          )}
+
+          <button className="cold-open-skip" type="button" onClick={skipIntro}>SKIP INTRO</button>
+        </section>
+      )}
 
       {!started && (
         <section className="entry-panel">
