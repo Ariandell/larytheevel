@@ -136,7 +136,7 @@ export default function Home() {
   const [online, setOnline] = useState(false);
   const [phase, setPhase] = useState<IntroPhase>("camera");
   const [focus, setFocus] = useState<MonitorId | null>(null);
-  const [sound, setSound] = useState(false);
+  const [sound, setSound] = useState(true);
 
   useEffect(() => {
     loopRef.current?.load();
@@ -216,7 +216,7 @@ export default function Home() {
       </svg>
 
       <div className="scene-frame" aria-label="Evil Larry night surveillance room">
-        <video ref={loopRef} className="room-video loop-video" src="/assets/looped.mp4" preload="auto" playsInline loop muted />
+        <video ref={loopRef} className="room-video loop-video" src="/assets/looped.mp4" preload="auto" playsInline loop muted={!sound} />
 
         {monitorIds.map((id) => {
           const config = screens[id];
@@ -258,24 +258,22 @@ export default function Home() {
 
       {phase !== "lamp" && phase !== "office" && (
         <section className={`cold-open cold-open-${phase}`} aria-live="polite">
-          {phase === "camera" && (
-            <div className="camera-stage">
-              <div className="camera-room-placeholder" aria-hidden="true"><i /><i /><i /></div>
+          {(phase === "camera" || phase === "blackout") && (
+            <div className={`camera-stage ${phase === "blackout" ? "is-powering-off" : ""}`}>
+              <div className="camera-room-placeholder" aria-hidden="true" />
               <div className="camera-interface">
                 <div className="camera-topline">
                   <span><i className="record-dot" /> REC&nbsp;&nbsp;00:02:18</span>
-                  <span className="battery-status">LOW BATTERY <i className="battery-shell"><i /></i></span>
                 </div>
                 <div className="camera-mode">NIGHT VISION&nbsp;&nbsp;/&nbsp;&nbsp;AUTO</div>
                 <div className="camera-bottomline"><span>CH 06</span><span>ISO 6400</span><span>F2.8</span></div>
               </div>
-            </div>
-          )}
-
-          {phase === "blackout" && (
-            <div className="blackout-copy">
-              <span>POWER SOURCE DEPLETED</span>
-              <strong>CAMERA OFFLINE</strong>
+              {phase === "camera" && (
+                <span className="battery-warning" aria-label="Camera battery depleted">
+                  <i className="battery-shell"><i /></i>
+                </span>
+              )}
+              <div className="camera-shutdown-flare" aria-hidden="true" />
             </div>
           )}
 
