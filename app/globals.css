@@ -165,9 +165,9 @@ button { font:inherit; }
 .generator-controls legend { color:rgba(205,226,193,.6); font-size:8px; letter-spacing:.12em; }
 .generator-controls fieldset { margin:0; padding:0; border:0; }
 .generator-controls legend { margin-bottom:9px; }
-.style-options { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-.style-options button { padding:9px 7px; color:rgba(202,226,190,.56); border:1px solid rgba(185,216,168,.2); background:rgba(2,8,4,.54); cursor:pointer; font-size:8px; letter-spacing:.08em; }
-.style-options button:hover,.style-options button:focus-visible,.style-options button.is-selected { color:#e0edd8; border-color:rgba(195,229,178,.52); background:rgba(139,183,120,.15); outline:none; }
+.random-larry-question { display:grid; gap:9px; padding:18px; border:1px solid rgba(185,216,168,.26); background:radial-gradient(circle at 50% 20%,rgba(154,202,133,.12),transparent 64%),rgba(2,8,4,.54); text-align:center; }
+.random-larry-question span,.random-larry-question small { color:rgba(195,219,183,.48); font-size:7px; letter-spacing:.13em; }
+.random-larry-question strong { color:#dcebd4; font-family:var(--font-geist-sans); font-size:clamp(18px,2.1vw,31px); font-weight:400; letter-spacing:.055em; }
 .locked-directive { display:grid; gap:8px; padding:14px; border:1px solid rgba(185,216,168,.16); background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 5px); }
 .locked-directive span,.locked-directive strong { font-size:8px; letter-spacing:.1em; }.locked-directive span{color:rgba(195,219,183,.42)}.locked-directive strong{color:rgba(211,231,200,.72);font-weight:500}
 .generator-readout { display:flex; justify-content:space-between; gap:16px; padding:10px 0; border-bottom:1px solid rgba(185,216,168,.12); }

@@ -93,7 +93,7 @@ const screens: ScreenConfigs = {
 };
 
 const monitorCopy: Record<MonitorId, { code: string; title: string; detail: string }> = {
-  left: { code: "GEN-01", title: "SUMMON LARRY", detail: "Portrait generator waiting for a subject." },
+  left: { code: "GEN-01", title: "SUMMON LARRY", detail: "One of one hundred Larry identities is waiting for you." },
   center: { code: "CAM-06", title: "LIVE SURVEILLANCE", detail: "Central corridor feed. Motion status: unknown." },
   right: { code: "ARC-09", title: "THE ARCHIVES", detail: "Recovered footage, classified memes and sightings." },
 };
@@ -105,8 +105,6 @@ const desktopApps = [
   { id: "lore", glyph: "?", label: "LARRY.DAT", detail: "CLASSIFIED ORIGIN FILE // 9 RECORDS RECOVERED" },
   { id: "terminal", glyph: ">_", label: "TERMINAL", detail: "ROOT ACCESS DENIED // LARRY IS WATCHING" },
 ];
-
-const generatorStyles = ["NIGHT WATCH", "CURSED ID", "MEME LORD", "VOID ICON"];
 
 const memeNames = [
   "THE STARE THAT OWES RENT", "BATTERY EATER", "WIFI INSPECTOR", "CEILING DEMON", "UNPAID VET BILL",
@@ -245,10 +243,10 @@ export default function Home() {
   const [sound, setSound] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [selectedApp, setSelectedApp] = useState(desktopApps[0].id);
-  const [generatorStyle, setGeneratorStyle] = useState(generatorStyles[0]);
   const [generationState, setGenerationState] = useState<GenerationState>("idle");
   const [generatedSource, setGeneratedSource] = useState<string | null>(null);
   const [generatedDownloadName, setGeneratedDownloadName] = useState("larry-output.png");
+  const [generatedPresetName, setGeneratedPresetName] = useState("UNKNOWN LARRY");
   const [personalGenerationCount, setPersonalGenerationCount] = useState(0);
   const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>(initialArchive);
   const [selectedArchive, setSelectedArchive] = useState(initialArchive[0].id);
@@ -276,11 +274,13 @@ export default function Home() {
     void loadPersonalGenerations()
       .then((personalItems) => {
         if (!personalItems.length) return;
-        const latest = personalItems[0];
-        setArchiveItems([...personalItems, ...initialArchive]);
+        const normalizedItems = personalItems.map((item) => ({ ...item, tone: 4 }));
+        const latest = normalizedItems[0];
+        setArchiveItems([...normalizedItems, ...initialArchive]);
         setSelectedArchive(latest.id);
         setGeneratedSource(latest.source);
         setGeneratedDownloadName(`${latest.name}.${latest.fileExtension || "png"}`);
+        setGeneratedPresetName(latest.style);
         setPersonalGenerationCount(personalItems.length);
       })
       .catch(() => { /* Private browsing may disable persistent browser storage. */ });
@@ -420,19 +420,21 @@ export default function Home() {
       const response = await fetch("/api/generate-larry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ style: generatorStyle }),
+        body: "{}",
       });
-      const result = await response.json() as { image?: string; mimeType?: string; error?: string };
+      const result = await response.json() as { image?: string; mimeType?: string; presetName?: string; presetId?: string; error?: string };
       if (!response.ok || !result.image) throw new Error(result.error || "Summoning failed.");
 
       const id = Date.now();
       const extension = result.mimeType === "image/jpeg" ? "jpg" : "png";
+      const presetName = result.presetName || "MYSTERY LARRY";
+      const safePresetName = presetName.replace(/[^A-Z0-9]+/g, "_").replace(/^_|_$/g, "");
       const item: ArchiveItem = {
         id,
-        name: `LARRY_${String(id).slice(-4)}`,
-        style: generatorStyle,
+        name: `${safePresetName}_${String(id).slice(-4)}`,
+        style: presetName,
         source: `data:${result.mimeType || "image/png"};base64,${result.image}`,
-        tone: generatorStyles.indexOf(generatorStyle) % 4,
+        tone: 4,
         reportedBy: "THE SUMMONING TERMINAL",
         threat: "FRESHLY SUMMONED",
         lastSeen: "INSIDE THE GENERATOR",
@@ -440,6 +442,7 @@ export default function Home() {
       };
       setGeneratedSource(item.source);
       setGeneratedDownloadName(`${item.name}.${extension}`);
+      setGeneratedPresetName(presetName);
       setArchiveItems((items) => [item, ...items]);
       setSelectedArchive(id);
       setPersonalGenerationCount((count) => count + 1);
@@ -677,32 +680,29 @@ export default function Home() {
           {focus === "left" && (
             <div className="generator-workspace">
               <div className="generator-source">
-                <div className={`generator-preview archive-tone-${generatorStyles.indexOf(generatorStyle) % 4}`}>
+                <div className="generator-preview">
                   <img src={generatedSource || "/assets/larry-dark-plate-v1.png"} alt={generatedSource ? "Generated Larry avatar" : "Larry source portrait preview"} />
                   <span>{generatedSource ? "OUTPUT RECEIVED // LARRY" : "SUBJECT LOCKED // LARRY"}</span>
                 </div>
                 <small>THE SUBJECT AND GENERATION PROMPT ARE SYSTEM-LOCKED.</small>
               </div>
               <div className="generator-controls">
-                <fieldset>
-                  <legend>SELECT THE VIBE</legend>
-                  <div className="style-options">
-                    {generatorStyles.map((style) => (
-                      <button className={generatorStyle === style ? "is-selected" : ""} type="button" key={style} onClick={() => { setGeneratorStyle(style); setGenerationState("idle"); }}>{style}</button>
-                    ))}
-                  </div>
-                </fieldset>
+                <div className="random-larry-question">
+                  <span>IDENTITY ROULETTE // 100 POSSIBLE FORMS</span>
+                  <strong>WHICH LARRY IS WATCHING YOU?</strong>
+                  <small>ONE SIMPLE MEME LOOK WILL BE SELECTED AT RANDOM.</small>
+                </div>
                 <div className="locked-directive">
-                  <span>GENERATION DIRECTIVE</span>
-                  <strong>LARRY IDENTITY PRESERVED // AUTOMATIC PROMPT</strong>
+                  <span>LOCKED GENERATION DIRECTIVE</span>
+                  <strong>ORIGINAL LARRY UNTOUCHED // PROP + BACKGROUND ONLY</strong>
                 </div>
                 <div className="generator-readout"><span>OUTPUT</span><strong>1:1 AVATAR / 1024 PX</strong></div>
                 <div className="generator-readout"><span>MODEL</span><strong>NANO BANANA 2 LITE / 1K</strong></div>
                 <button className="generate-action" type="button" onClick={generateLarry} disabled={generationState === "working"}>
-                  {generationState === "working" ? "SUMMONING..." : generationState === "ready" ? "SUMMON AGAIN" : "SUMMON LARRY"}
+                  {generationState === "working" ? "FINDING YOUR LARRY..." : generationState === "ready" ? "FIND ANOTHER LARRY" : "FIND MY LARRY"}
                 </button>
                 <small className="generator-status">
-                  {generationState === "ready" ? "GENERATION STORED IN THE ARCHIVES" : generationState === "error" ? "SIGNAL LOST // TRY AGAIN" : "SUBJECT LOCKED // READY TO SUMMON"}
+                  {generationState === "ready" ? `${generatedPresetName} // SAVED TO YOUR LOCAL ARCHIVE` : generationState === "error" ? "SIGNAL LOST // TRY AGAIN" : generationState === "working" ? "ROLLING ONE OF 100 IDENTITIES..." : "LARRY LOCKED // READY TO ROLL"}
                 </small>
                 {generationState === "ready" && (
                   <div className="generator-result-actions">
