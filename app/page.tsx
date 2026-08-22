@@ -133,22 +133,36 @@ export default function Home() {
   const loopRef = useRef<HTMLVideoElement>(null);
   const officeStartedRef = useRef(false);
   const phaseTimersRef = useRef<number[]>([]);
+  const officeAudioDataRef = useRef<ArrayBuffer | null>(null);
+  const officeAudioContextRef = useRef<AudioContext | null>(null);
+  const officeAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const officeAudioGainRef = useRef<GainNode | null>(null);
   const [online, setOnline] = useState(false);
   const [phase, setPhase] = useState<IntroPhase>("camera");
   const [focus, setFocus] = useState<MonitorId | null>(null);
   const [sound, setSound] = useState(true);
 
   useEffect(() => {
+    const audioRequest = new AbortController();
     loopRef.current?.load();
     const larryPreload = new window.Image();
     larryPreload.src = "/assets/larry-dark-plate-v1.png";
+    fetch("/assets/office-ambience-loop.wav", { signal: audioRequest.signal })
+      .then((response) => response.arrayBuffer())
+      .then((data) => { officeAudioDataRef.current = data; })
+      .catch(() => { /* Room ambience can still load after the respawn click. */ });
     phaseTimersRef.current = [
       window.setTimeout(() => setPhase("blackout"), 2400),
       window.setTimeout(() => setPhase("larry"), 2800),
       window.setTimeout(() => setPhase("died"), 5350),
       window.setTimeout(() => setPhase("respawn"), 7050),
     ];
-    return () => phaseTimersRef.current.forEach(window.clearTimeout);
+    return () => {
+      audioRequest.abort();
+      phaseTimersRef.current.forEach(window.clearTimeout);
+      try { officeAudioSourceRef.current?.stop(); } catch { /* Already stopped. */ }
+      void officeAudioContextRef.current?.close();
+    };
   }, []);
 
   function clearPhaseTimers() {
@@ -156,11 +170,35 @@ export default function Home() {
     phaseTimersRef.current = [];
   }
 
+  async function startOfficeAmbience() {
+    if (officeAudioSourceRef.current) return;
+    const AudioContextClass = window.AudioContext
+      ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    const context = new AudioContextClass();
+    officeAudioContextRef.current = context;
+    await context.resume();
+    const encodedAudio = officeAudioDataRef.current
+      ?? await fetch("/assets/office-ambience-loop.wav").then((response) => response.arrayBuffer());
+    const buffer = await context.decodeAudioData(encodedAudio.slice(0));
+    const gain = context.createGain();
+    const source = context.createBufferSource();
+    gain.gain.value = sound ? .72 : 0;
+    source.buffer = buffer;
+    source.loop = true;
+    source.connect(gain).connect(context.destination);
+    officeAudioGainRef.current = gain;
+    officeAudioSourceRef.current = source;
+    source.start();
+  }
+
   async function respawn() {
     if (officeStartedRef.current) return;
     officeStartedRef.current = true;
     clearPhaseTimers();
     setPhase("lamp");
+    void startOfficeAmbience();
     const loop = loopRef.current;
     if (!loop) {
       phaseTimersRef.current = [window.setTimeout(() => {
@@ -170,13 +208,11 @@ export default function Home() {
       return;
     }
     loop.currentTime = 0;
-    loop.muted = !sound;
     let loopIsPlaying = false;
     try {
       await loop.play();
       loopIsPlaying = true;
     } catch {
-      loop.muted = true;
       try {
         await loop.play();
         loopIsPlaying = true;
@@ -195,7 +231,9 @@ export default function Home() {
   function toggleSound() {
     const next = !sound;
     setSound(next);
-    if (loopRef.current) loopRef.current.muted = !next;
+    const context = officeAudioContextRef.current;
+    const gain = officeAudioGainRef.current;
+    if (context && gain) gain.gain.setTargetAtTime(next ? .72 : 0, context.currentTime, .025);
   }
 
   const sceneStyle = {
@@ -216,7 +254,7 @@ export default function Home() {
       </svg>
 
       <div className="scene-frame" aria-label="Evil Larry night surveillance room">
-        <video ref={loopRef} className="room-video loop-video" src="/assets/looped.mp4" preload="auto" playsInline loop muted={!sound} />
+        <video ref={loopRef} className="room-video loop-video" src="/assets/looped.mp4" preload="auto" playsInline loop muted />
 
         {monitorIds.map((id) => {
           const config = screens[id];
