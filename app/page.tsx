@@ -17,7 +17,7 @@ type MonitorConfig = {
   screenAlpha: number;
 };
 type ScreenConfigs = Record<MonitorId, MonitorConfig>;
-type GenerationState = "idle" | "working" | "ready";
+type GenerationState = "idle" | "working" | "ready" | "error";
 type ArchiveItem = {
   id: number;
   name: string;
@@ -29,6 +29,7 @@ type ArchiveItem = {
   reportedBy?: string;
   threat?: string;
   lastSeen?: string;
+  fileExtension?: string;
 };
 
 const monitorIds: MonitorId[] = ["left", "center", "right"];
@@ -356,25 +357,37 @@ export default function Home() {
     setFocus(id);
   }
 
-  function generateLarry() {
+  async function generateLarry() {
     if (generationState === "working") return;
     setGenerationState("working");
-    window.setTimeout(() => {
+    try {
+      const response = await fetch("/api/generate-larry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ style: generatorStyle }),
+      });
+      const result = await response.json() as { image?: string; mimeType?: string; error?: string };
+      if (!response.ok || !result.image) throw new Error(result.error || "Summoning failed.");
+
       const id = Date.now();
+      const extension = result.mimeType === "image/jpeg" ? "jpg" : "png";
       const item: ArchiveItem = {
         id,
         name: `LARRY_${String(id).slice(-4)}`,
         style: generatorStyle,
-        source: "/assets/larry-dark-plate-v1.png",
+        source: `data:${result.mimeType || "image/png"};base64,${result.image}`,
         tone: generatorStyles.indexOf(generatorStyle) % 4,
         reportedBy: "THE SUMMONING TERMINAL",
         threat: "FRESHLY SUMMONED",
         lastSeen: "INSIDE THE GENERATOR",
+        fileExtension: extension,
       };
       setArchiveItems((items) => [item, ...items]);
       setSelectedArchive(id);
       setGenerationState("ready");
-    }, 1200);
+    } catch {
+      setGenerationState("error");
+    }
   }
 
   const sceneStyle = {
@@ -383,7 +396,7 @@ export default function Home() {
   } as CSSProperties;
   const activeApp = desktopApps.find((app) => app.id === selectedApp) || desktopApps[0];
   const activeArchive = archiveItems.find((item) => item.id === selectedArchive) || archiveItems[0];
-  const activeArchiveExtension = activeArchive.source.split(".").pop() || "png";
+  const activeArchiveExtension = activeArchive.fileExtension || activeArchive.source.split(".").pop() || "png";
 
   return (
     <main className={`night-shift phase-${phase} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""}`} style={sceneStyle}>
@@ -624,12 +637,12 @@ export default function Home() {
                   <strong>LARRY IDENTITY PRESERVED // AUTOMATIC PROMPT</strong>
                 </div>
                 <div className="generator-readout"><span>OUTPUT</span><strong>1:1 AVATAR / 1024 PX</strong></div>
-                <div className="generator-readout"><span>MODEL</span><strong>IMAGE API / PENDING</strong></div>
+                <div className="generator-readout"><span>MODEL</span><strong>NANO BANANA 2 LITE / 1K</strong></div>
                 <button className="generate-action" type="button" onClick={generateLarry} disabled={generationState === "working"}>
                   {generationState === "working" ? "SUMMONING..." : generationState === "ready" ? "SUMMON AGAIN" : "SUMMON LARRY"}
                 </button>
                 <small className="generator-status">
-                  {generationState === "ready" ? "GENERATION STORED IN THE ARCHIVES" : "FRONTEND READY // API CONNECTION REQUIRED"}
+                  {generationState === "ready" ? "GENERATION STORED IN THE ARCHIVES" : generationState === "error" ? "SIGNAL LOST // TRY AGAIN" : "SUBJECT LOCKED // READY TO SUMMON"}
                 </small>
               </div>
             </div>
