@@ -100,14 +100,16 @@ const desktopApps = [
 
 const generatorStyles = ["NIGHT WATCH", "CURSED ID", "MEME LORD", "VOID ICON"];
 
-const initialArchive: ArchiveItem[] = [
-  { id: 404, name: "ORIGINAL_SIGHTING", style: "INTERNET ARCHIVE", source: "/assets/larry-meme-original.jpg", tone: 0, credit: "PINTEREST ARCHIVE", sourceUrl: "https://www.pinterest.com/ideas/larry-the-cat-meme/933522008976/" },
-  { id: 369, name: "EVIL_LARRY", style: "REACTION FILE", source: "/assets/larry-evil.gif", tone: 1, credit: "TENOR", sourceUrl: "https://tenor.com/view/evil-larry-larry-gif-431258253732208458" },
-  { id: 333, name: "SPOOKY_LARRY", style: "SCARIEST STORIES", source: "/assets/larry-spooky.gif", tone: 2, credit: "TENOR", sourceUrl: "https://tenor.com/view/larry-spooky-larry-gif-4391033182720544051" },
-  { id: 301, name: "LARRY_0301", style: "NIGHT WATCH", source: "/assets/larry-dark-plate-v1.png", tone: 0 },
-  { id: 245, name: "LARRY_0245", style: "CURSED ID", source: "/assets/larry-dark-plate-v1.png", tone: 1 },
-  { id: 119, name: "LARRY_0119", style: "VOID ICON", source: "/assets/larry-dark-plate-v1.png", tone: 2 },
-];
+const initialArchive: ArchiveItem[] = Array.from({ length: 30 }, (_, index) => {
+  const number = String(index + 1).padStart(2, "0");
+  return {
+    id: 1000 + index,
+    name: `LARRY_MEME_${number}`,
+    style: "MEME ARCHIVE",
+    source: `/assets/memes/larry-meme-${number}.jpg`,
+    tone: 4,
+  };
+});
 
 function distance(a: Point, b: Point) {
   return Math.hypot(b.x - a.x, b.y - a.y);
