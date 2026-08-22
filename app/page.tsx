@@ -26,6 +26,9 @@ type ArchiveItem = {
   tone: number;
   credit?: string;
   sourceUrl?: string;
+  reportedBy?: string;
+  threat?: string;
+  lastSeen?: string;
 };
 
 const monitorIds: MonitorId[] = ["left", "center", "right"];
@@ -100,14 +103,30 @@ const desktopApps = [
 
 const generatorStyles = ["NIGHT WATCH", "CURSED ID", "MEME LORD", "VOID ICON"];
 
+const memeNames = [
+  "THE STARE THAT OWES RENT", "BATTERY EATER", "WIFI INSPECTOR", "CEILING DEMON", "UNPAID VET BILL",
+  "THE 3AM SUPERVISOR", "MOM SAID NO CATNIP", "DO NOT MAKE EYE CONTACT", "MICROWAVE WITNESS", "FRIDGE RAID BOSS",
+  "SILLY BUT ARMED", "THE LAST KIBBLE", "ORIENTATION FAILED", "TAX AUDITOR", "KEYBOARD POSSESSION",
+  "NIGHT SHIFT MANAGER", "TREAT NEGOTIATOR", "LITTLE GUY, BIG CRIMES", "FBI MOST WANTED CAT", "THE BLINKLESS ONE",
+  "DOORWAY JUMPSCARE", "MOUSE UNION BUSTER", "CABLE CHEWER", "NO THOUGHTS, JUST LARRY", "CATNIP KINGPIN",
+  "THE LOOMING", "VACUUM SURVIVOR", "FEED ME OR ELSE", "SCREEN WATCHER", "FINAL BOSS: LARRY",
+];
+
+const memeReports = ["THE GROUP CHAT", "A POTATO CAMERA", "AN UNRELIABLE WITNESS", "THE NEIGHBOR'S RING CAM", "THE KITCHEN FRIDGE", "A SHAKY HAND" ];
+const memeThreats = ["MILDLY CONCERNING", "SNACK-MOTIVATED", "TOO SILLY TO TRUST", "DO NOT PET", "PROBABLY HUNGRY", "POSSIBLY OMNISCIENT"];
+const memeLocations = ["YOUR PERIPHERAL VISION", "BEHIND THE CURTAIN", "THE KITCHEN AT 3:00 AM", "UNDER THE DESK", "ON THE WIFI", "IN THE WALLS"];
+
 const initialArchive: ArchiveItem[] = Array.from({ length: 30 }, (_, index) => {
   const number = String(index + 1).padStart(2, "0");
   return {
     id: 1000 + index,
-    name: `LARRY_MEME_${number}`,
-    style: "MEME ARCHIVE",
+    name: memeNames[index],
+    style: `CASE ${number} // ${memeThreats[index % memeThreats.length]}`,
     source: `/assets/memes/larry-meme-${number}.jpg`,
     tone: 4,
+    reportedBy: memeReports[index % memeReports.length],
+    threat: memeThreats[index % memeThreats.length],
+    lastSeen: memeLocations[index % memeLocations.length],
   };
 });
 
@@ -348,6 +367,9 @@ export default function Home() {
         style: generatorStyle,
         source: "/assets/larry-dark-plate-v1.png",
         tone: generatorStyles.indexOf(generatorStyle) % 4,
+        reportedBy: "THE SUMMONING TERMINAL",
+        threat: "FRESHLY SUMMONED",
+        lastSeen: "INSIDE THE GENERATOR",
       };
       setArchiveItems((items) => [item, ...items]);
       setSelectedArchive(id);
@@ -619,10 +641,12 @@ export default function Home() {
                 <div className={`archive-main-image archive-tone-${activeArchive.tone}`}>
                   <img src={activeArchive.source} alt={`${activeArchive.name} generated Larry portrait`} />
                 </div>
-                <div><span>FILE</span><strong>{activeArchive.name}.PNG</strong></div>
-                <div><span>PROFILE</span><strong>{activeArchive.style}</strong></div>
-                <div><span>SOURCE</span>{activeArchive.sourceUrl ? <a href={activeArchive.sourceUrl} target="_blank" rel="noreferrer">{activeArchive.credit} ↗</a> : <strong>LOCAL RECOVERY</strong>}</div>
-                <a href={activeArchive.source} download={`${activeArchive.name}.${activeArchiveExtension}`}>DOWNLOAD FILE</a>
+                <div><span>CASE NAME</span><strong>{activeArchive.name}</strong></div>
+                <div><span>OFFICIAL MOOD</span><strong>{activeArchive.style}</strong></div>
+                <div><span>REPORTED BY</span>{activeArchive.sourceUrl ? <a href={activeArchive.sourceUrl} target="_blank" rel="noreferrer">{activeArchive.credit} ↗</a> : <strong>{activeArchive.reportedBy || "THE GROUP CHAT"}</strong>}</div>
+                <div><span>THREAT LEVEL</span><strong>{activeArchive.threat || "MILDLY CONCERNING"}</strong></div>
+                <div><span>LAST SEEN</span><strong>{activeArchive.lastSeen || "YOUR PERIPHERAL VISION"}</strong></div>
+                <a href={activeArchive.source} download={`${activeArchive.name}.${activeArchiveExtension}`}>DOWNLOAD EVIDENCE</a>
               </div>
               <div className="archive-browser">
                 <header><span>RECOVERED GENERATIONS</span><small>{archiveItems.length} FILES</small></header>
