@@ -92,7 +92,6 @@ const desktopApps = [
   { id: "x", glyph: "X", label: "X / TWITTER", detail: "PUBLIC TRANSMISSION CHANNEL // LINK AWAITING CONFIGURATION" },
   { id: "telegram", glyph: "TG", label: "TELEGRAM", detail: "LARRY COMMUNITY UPLINK // LINK AWAITING CONFIGURATION" },
   { id: "contract", glyph: "0X", label: "CONTRACT", detail: "TOKEN ADDRESS // NOT YET ASSIGNED" },
-  { id: "chart", glyph: "▲", label: "LIVE CHART", detail: "MARKET SIGNAL TERMINAL // DATA FEED OFFLINE" },
   { id: "lore", glyph: "?", label: "LARRY.DAT", detail: "CLASSIFIED ORIGIN FILE // 9 RECORDS RECOVERED" },
   { id: "terminal", glyph: ">_", label: "TERMINAL", detail: "ROOT ACCESS DENIED // LARRY IS WATCHING" },
 ];
@@ -182,8 +181,6 @@ export default function Home() {
   const [initialized, setInitialized] = useState(false);
   const [selectedApp, setSelectedApp] = useState(desktopApps[0].id);
   const [generatorStyle, setGeneratorStyle] = useState(generatorStyles[0]);
-  const [generatorPrompt, setGeneratorPrompt] = useState("Larry as a sinister profile picture, centered portrait, direct eye contact");
-  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [generationState, setGenerationState] = useState<GenerationState>("idle");
   const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>(initialArchive);
   const [selectedArchive, setSelectedArchive] = useState(initialArchive[0].id);
@@ -206,10 +203,6 @@ export default function Home() {
       void officeAudioContextRef.current?.close();
     };
   }, []);
-
-  useEffect(() => () => {
-    if (uploadPreview?.startsWith("blob:")) URL.revokeObjectURL(uploadPreview);
-  }, [uploadPreview]);
 
   function clearPhaseTimers() {
     phaseTimersRef.current.forEach(window.clearTimeout);
@@ -331,13 +324,6 @@ export default function Home() {
     if (context && gain) gain.gain.setTargetAtTime(next ? .5 : 0, context.currentTime, .025);
   }
 
-  function handleLarryUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setUploadPreview(URL.createObjectURL(file));
-    setGenerationState("idle");
-  }
-
   function generateLarry() {
     if (generationState === "working") return;
     setGenerationState("working");
@@ -347,8 +333,8 @@ export default function Home() {
         id,
         name: `LARRY_${String(id).slice(-4)}`,
         style: generatorStyle,
-        source: uploadPreview || "/assets/larry-dark-plate-v1.png",
-        tone: archiveItems.length % 4,
+        source: "/assets/larry-dark-plate-v1.png",
+        tone: generatorStyles.indexOf(generatorStyle) % 4,
       };
       setArchiveItems((items) => [item, ...items]);
       setSelectedArchive(id);
@@ -539,29 +525,25 @@ export default function Home() {
           {focus === "left" && (
             <div className="generator-workspace">
               <div className="generator-source">
-                <div className={`generator-preview archive-tone-${archiveItems.length % 4}`}>
-                  <img src={uploadPreview || "/assets/larry-dark-plate-v1.png"} alt="Larry source portrait preview" />
-                  <span>{uploadPreview ? "SUBJECT LOADED" : "DEFAULT SUBJECT"}</span>
+                <div className={`generator-preview archive-tone-${generatorStyles.indexOf(generatorStyle) % 4}`}>
+                  <img src="/assets/larry-dark-plate-v1.png" alt="Larry source portrait preview" />
+                  <span>SUBJECT LOCKED // LARRY</span>
                 </div>
-                <label className="upload-control">
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLarryUpload} />
-                  UPLOAD LARRY PHOTO
-                </label>
-                <small>JPG / PNG / WEBP&nbsp;&nbsp;·&nbsp;&nbsp;MAX 10 MB</small>
+                <small>THE SUBJECT AND GENERATION PROMPT ARE SYSTEM-LOCKED.</small>
               </div>
               <div className="generator-controls">
-                <label>
-                  <span>PORTRAIT DIRECTIVE</span>
-                  <textarea value={generatorPrompt} onChange={(event) => setGeneratorPrompt(event.target.value)} maxLength={280} />
-                </label>
                 <fieldset>
-                  <legend>VISUAL PROFILE</legend>
+                  <legend>SELECT THE VIBE</legend>
                   <div className="style-options">
                     {generatorStyles.map((style) => (
-                      <button className={generatorStyle === style ? "is-selected" : ""} type="button" key={style} onClick={() => setGeneratorStyle(style)}>{style}</button>
+                      <button className={generatorStyle === style ? "is-selected" : ""} type="button" key={style} onClick={() => { setGeneratorStyle(style); setGenerationState("idle"); }}>{style}</button>
                     ))}
                   </div>
                 </fieldset>
+                <div className="locked-directive">
+                  <span>GENERATION DIRECTIVE</span>
+                  <strong>LARRY IDENTITY PRESERVED // AUTOMATIC PROMPT</strong>
+                </div>
                 <div className="generator-readout"><span>OUTPUT</span><strong>1:1 AVATAR / 1024 PX</strong></div>
                 <div className="generator-readout"><span>MODEL</span><strong>IMAGE API / PENDING</strong></div>
                 <button className="generate-action" type="button" onClick={generateLarry} disabled={generationState === "working"}>
