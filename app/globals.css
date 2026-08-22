@@ -78,8 +78,8 @@ button { font:inherit; }
 .television-static { position:absolute; z-index:1; inset:-30%; opacity:.7; background:repeating-radial-gradient(circle at 42% 51%,rgba(255,255,255,.19) 0 1px,transparent 1px 3px),repeating-linear-gradient(0deg,rgba(255,255,255,.12) 0 1px,transparent 1px 4px); animation:deathStatic 90ms steps(2) infinite; }
 .death-screen::after { content:""; position:absolute; z-index:2; inset:0; background:radial-gradient(circle,transparent 0 18%,rgba(0,0,0,.78) 80%); }
 .death-screen strong,.death-screen span { position:relative; z-index:3; }
-.death-screen strong { color:rgba(155,24,20,.92); font-family:Georgia,"Times New Roman",serif; font-size:clamp(58px,12vw,180px); font-weight:400; line-height:.8; letter-spacing:.04em; text-shadow:0 2px 2px #000,0 0 22px rgba(116,14,12,.35); animation:deathTitle 8057ms ease both; }
-.death-screen span { color:rgba(220,220,215,.28); font-size:7px; letter-spacing:.22em; animation:deathSubtitle 8057ms ease both; }
+.death-screen strong { color:rgba(155,24,20,.92); font-family:Georgia,"Times New Roman",serif; font-size:clamp(58px,12vw,180px); font-weight:400; line-height:.8; letter-spacing:.04em; text-shadow:0 2px 2px #000,0 0 22px rgba(116,14,12,.35); animation:deathTitle 5600ms ease both; }
+.death-screen span { color:rgba(220,220,215,.28); font-size:7px; letter-spacing:.22em; animation:deathSubtitle 5600ms ease both; }
 
 .camera-initialize { position:absolute; z-index:30; inset:0; display:grid; place-content:center; gap:8px; width:100%; padding:0; color:rgba(235,235,230,.76); border:0; background:transparent; cursor:pointer; text-align:center; letter-spacing:.16em; }
 .camera-initialize span { font-size:clamp(10px,1.15vw,15px); text-shadow:0 0 10px rgba(220,230,218,.28); animation:initializePulse 1.2s steps(2,end) infinite; }
@@ -178,6 +178,9 @@ button { font:inherit; }
 .generate-action:disabled { opacity:.54; cursor:wait; }
 .archive-jump { align-self:flex-start; padding:0; color:#bfd9ae; border:0; background:transparent; cursor:pointer; font-size:8px; letter-spacing:.12em; }
 .archive-jump:hover,.archive-jump:focus-visible { color:#fff; outline:none; text-shadow:0 0 12px rgba(191,217,174,.65); }
+.generator-result-actions { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.generator-result-actions a { color:#071006; padding:9px 12px; border:1px solid #bcd6ad; background:#bcd6ad; font-size:8px; font-weight:700; letter-spacing:.12em; text-decoration:none; }
+.generator-result-actions a:hover,.generator-result-actions a:focus-visible { color:#e1eed9; background:transparent; outline:none; }
 
 .archive-workspace { display:grid; flex:1; grid-template-columns:minmax(220px,.72fr) minmax(420px,1.5fr); gap:24px; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
 .archive-inspector { display:flex; flex-direction:column; gap:12px; }

@@ -32,6 +32,10 @@ type ArchiveItem = {
   fileExtension?: string;
 };
 
+const personalArchiveDatabase = "evil-larry-personal-archive";
+const personalArchiveStore = "generations";
+const deathSceneDuration = 5600;
+
 const monitorIds: MonitorId[] = ["left", "center", "right"];
 const cornerIds: CornerId[] = ["tl", "tr", "br", "bl"];
 const introTiming = {
@@ -39,7 +43,7 @@ const introTiming = {
   powerOff: 2400,
   larry: 3000,
   died: 6707,
-  respawn: 14764,
+  respawn: 6707 + deathSceneDuration,
 };
 
 // Final monitor geometry captured from the approved on-page calibration.
@@ -131,6 +135,40 @@ const initialArchive: ArchiveItem[] = Array.from({ length: 30 }, (_, index) => {
   };
 });
 
+function openPersonalArchive() {
+  return new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open(personalArchiveDatabase, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(personalArchiveStore)) {
+        request.result.createObjectStore(personalArchiveStore, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function loadPersonalGenerations() {
+  const database = await openPersonalArchive();
+  return new Promise<ArchiveItem[]>((resolve, reject) => {
+    const transaction = database.transaction(personalArchiveStore, "readonly");
+    const request = transaction.objectStore(personalArchiveStore).getAll();
+    request.onsuccess = () => resolve((request.result as ArchiveItem[]).sort((a, b) => b.id - a.id));
+    request.onerror = () => reject(request.error);
+    transaction.oncomplete = () => database.close();
+  });
+}
+
+async function savePersonalGeneration(item: ArchiveItem) {
+  const database = await openPersonalArchive();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(personalArchiveStore, "readwrite");
+    transaction.objectStore(personalArchiveStore).put(item);
+    transaction.oncomplete = () => { database.close(); resolve(); };
+    transaction.onerror = () => { database.close(); reject(transaction.error); };
+  });
+}
+
 function distance(a: Point, b: Point) {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
@@ -210,6 +248,8 @@ export default function Home() {
   const [generatorStyle, setGeneratorStyle] = useState(generatorStyles[0]);
   const [generationState, setGenerationState] = useState<GenerationState>("idle");
   const [generatedSource, setGeneratedSource] = useState<string | null>(null);
+  const [generatedDownloadName, setGeneratedDownloadName] = useState("larry-output.png");
+  const [personalGenerationCount, setPersonalGenerationCount] = useState(0);
   const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>(initialArchive);
   const [selectedArchive, setSelectedArchive] = useState(initialArchive[0].id);
 
@@ -230,6 +270,20 @@ export default function Home() {
       try { officeAudioSourceRef.current?.stop(); } catch { /* Already stopped. */ }
       void officeAudioContextRef.current?.close();
     };
+  }, []);
+
+  useEffect(() => {
+    void loadPersonalGenerations()
+      .then((personalItems) => {
+        if (!personalItems.length) return;
+        const latest = personalItems[0];
+        setArchiveItems([...personalItems, ...initialArchive]);
+        setSelectedArchive(latest.id);
+        setGeneratedSource(latest.source);
+        setGeneratedDownloadName(`${latest.name}.${latest.fileExtension || "png"}`);
+        setPersonalGenerationCount(personalItems.length);
+      })
+      .catch(() => { /* Private browsing may disable persistent browser storage. */ });
   }, []);
 
   function clearPhaseTimers() {
@@ -385,8 +439,11 @@ export default function Home() {
         fileExtension: extension,
       };
       setGeneratedSource(item.source);
+      setGeneratedDownloadName(`${item.name}.${extension}`);
       setArchiveItems((items) => [item, ...items]);
       setSelectedArchive(id);
+      setPersonalGenerationCount((count) => count + 1);
+      void savePersonalGeneration(item).catch(() => { /* The current result remains downloadable. */ });
       setGenerationState("ready");
     } catch {
       setGenerationState("error");
@@ -524,7 +581,7 @@ export default function Home() {
       <audio ref={batteryAudioRef} src="/assets/audio/battery-warning.mp3" preload="auto" />
       <audio ref={cameraOffAudioRef} src="/assets/audio/camera-power-off.mp3" preload="auto" />
       <audio ref={larryAudioRef} src="/assets/audio/larry-theme-synced.mp3" preload="auto" />
-      <audio ref={deathAudioRef} src="/assets/audio/you-died.mp3" preload="auto" />
+      <audio ref={deathAudioRef} src="/assets/audio/you-died-short.mp3" preload="auto" />
       <audio ref={monitorAudioRef} src="/assets/audio/monitor-power-on.mp3" preload="auto" />
       <audio ref={monitorOpenAudioRef} src="/assets/audio/monitor-open.wav" preload="auto" />
 
@@ -648,7 +705,10 @@ export default function Home() {
                   {generationState === "ready" ? "GENERATION STORED IN THE ARCHIVES" : generationState === "error" ? "SIGNAL LOST // TRY AGAIN" : "SUBJECT LOCKED // READY TO SUMMON"}
                 </small>
                 {generationState === "ready" && (
-                  <button className="archive-jump" type="button" onClick={() => setFocus("right")}>VIEW IN ARCHIVES →</button>
+                  <div className="generator-result-actions">
+                    <a href={generatedSource || undefined} download={generatedDownloadName}>DOWNLOAD OUTPUT ↓</a>
+                    <button className="archive-jump" type="button" onClick={() => setFocus("right")}>VIEW IN ARCHIVES →</button>
+                  </div>
                 )}
               </div>
             </div>
@@ -668,7 +728,7 @@ export default function Home() {
                 <a href={activeArchive.source} download={`${activeArchive.name}.${activeArchiveExtension}`}>DOWNLOAD EVIDENCE</a>
               </div>
               <div className="archive-browser">
-                <header><span>RECOVERED GENERATIONS</span><small>{archiveItems.length} FILES</small></header>
+                <header><span>YOUR LOCAL ARCHIVE</span><small>{personalGenerationCount} PRIVATE / {initialArchive.length} RECOVERED</small></header>
                 <div className="archive-grid">
                   {archiveItems.map((item) => (
                     <button className={selectedArchive === item.id ? "is-selected" : ""} type="button" key={item.id} onClick={() => setSelectedArchive(item.id)}>
