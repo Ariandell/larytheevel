@@ -168,6 +168,7 @@ export default function Home() {
   const larryAudioRef = useRef<HTMLAudioElement>(null);
   const deathAudioRef = useRef<HTMLAudioElement>(null);
   const monitorAudioRef = useRef<HTMLAudioElement>(null);
+  const monitorOpenAudioRef = useRef<HTMLAudioElement>(null);
   const officeStartedRef = useRef(false);
   const phaseTimersRef = useRef<number[]>([]);
   const officeAudioDataRef = useRef<ArrayBuffer | null>(null);
@@ -197,7 +198,7 @@ export default function Home() {
     return () => {
       audioRequest.abort();
       phaseTimersRef.current.forEach(window.clearTimeout);
-      [batteryAudioRef, cameraOffAudioRef, larryAudioRef, deathAudioRef, monitorAudioRef]
+      [batteryAudioRef, cameraOffAudioRef, larryAudioRef, deathAudioRef, monitorAudioRef, monitorOpenAudioRef]
         .forEach((ref) => ref.current?.pause());
       try { officeAudioSourceRef.current?.stop(); } catch { /* Already stopped. */ }
       void officeAudioContextRef.current?.close();
@@ -324,6 +325,12 @@ export default function Home() {
     if (context && gain) gain.gain.setTargetAtTime(next ? .5 : 0, context.currentTime, .025);
   }
 
+  function openMonitor(id: MonitorId) {
+    if (!online) return;
+    playEffect(monitorOpenAudioRef);
+    setFocus(id);
+  }
+
   function generateLarry() {
     if (generationState === "working") return;
     setGenerationState("working");
@@ -383,7 +390,7 @@ export default function Home() {
               key={id}
               type="button"
               aria-label={`Open ${monitorCopy[id].title}`}
-              onClick={() => online && setFocus(id)}
+              onClick={() => openMonitor(id)}
             >
               <span className="monitor-surface" style={surfaceStyle}>
                 <span className="monitor-glass" />
@@ -474,6 +481,7 @@ export default function Home() {
       <audio ref={larryAudioRef} src="/assets/audio/larry-theme.mp3" preload="auto" />
       <audio ref={deathAudioRef} src="/assets/audio/you-died.mp3" preload="auto" />
       <audio ref={monitorAudioRef} src="/assets/audio/monitor-power-on.mp3" preload="auto" />
+      <audio ref={monitorOpenAudioRef} src="/assets/audio/monitor-open.wav" preload="auto" />
 
       <header className="hud hud-top" aria-hidden={!online}>
         <div><span className="status-dot" /> SYSTEM ONLINE</div>
