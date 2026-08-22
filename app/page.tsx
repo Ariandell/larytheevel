@@ -153,7 +153,7 @@ export default function Home() {
   const [phase, setPhase] = useState<IntroPhase>("camera");
   const [focus, setFocus] = useState<MonitorId | null>(null);
   const [sound, setSound] = useState(true);
-  const [audioBlocked, setAudioBlocked] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     const audioRequest = new AbortController();
@@ -164,7 +164,6 @@ export default function Home() {
       .then((response) => response.arrayBuffer())
       .then((data) => { officeAudioDataRef.current = data; })
       .catch(() => { /* Room ambience can still load after the respawn click. */ });
-    scheduleIntro();
     return () => {
       audioRequest.abort();
       phaseTimersRef.current.forEach(window.clearTimeout);
@@ -180,12 +179,12 @@ export default function Home() {
     phaseTimersRef.current = [];
   }
 
-  function playEffect(ref: { current: HTMLAudioElement | null }, volume = 1) {
+  function playEffect(ref: { current: HTMLAudioElement | null }) {
     if (!sound || !ref.current) return;
     ref.current.currentTime = 0;
-    ref.current.volume = volume;
+    ref.current.volume = .5;
     ref.current.muted = false;
-    void ref.current.play().catch(() => setAudioBlocked(true));
+    void ref.current.play().catch(() => { /* Playback has already been user-unlocked. */ });
   }
 
   function scheduleIntro() {
@@ -195,18 +194,18 @@ export default function Home() {
     setFocus(null);
     setPhase("camera");
     phaseTimersRef.current = [
-      window.setTimeout(() => playEffect(batteryAudioRef, .82), introTiming.battery),
+      window.setTimeout(() => playEffect(batteryAudioRef), introTiming.battery),
       window.setTimeout(() => {
         setPhase("blackout");
-        playEffect(cameraOffAudioRef, .9);
+        playEffect(cameraOffAudioRef);
       }, introTiming.powerOff),
       window.setTimeout(() => {
         setPhase("larry");
-        playEffect(larryAudioRef, .82);
+        playEffect(larryAudioRef);
       }, introTiming.larry),
       window.setTimeout(() => {
         setPhase("died");
-        playEffect(deathAudioRef, .88);
+        playEffect(deathAudioRef);
       }, introTiming.died),
       window.setTimeout(() => setPhase("respawn"), introTiming.respawn),
     ];
@@ -223,7 +222,7 @@ export default function Home() {
       } catch { /* The next explicit media action may still unlock playback. */ }
     }
     setSound(true);
-    setAudioBlocked(false);
+    setInitialized(true);
     scheduleIntro();
   }
 
@@ -241,7 +240,7 @@ export default function Home() {
     const buffer = await context.decodeAudioData(encodedAudio.slice(0));
     const gain = context.createGain();
     const source = context.createBufferSource();
-    gain.gain.value = sound ? .72 : 0;
+    gain.gain.value = sound ? .5 : 0;
     source.buffer = buffer;
     source.loop = true;
     source.connect(gain).connect(context.destination);
@@ -259,7 +258,7 @@ export default function Home() {
     const loop = loopRef.current;
     if (!loop) {
       phaseTimersRef.current = [window.setTimeout(() => {
-        playEffect(monitorAudioRef, .86);
+        playEffect(monitorAudioRef);
         setPhase("office");
         setOnline(true);
       }, 1750)];
@@ -278,7 +277,7 @@ export default function Home() {
     }
     const revealRoom = () => {
       phaseTimersRef.current = [window.setTimeout(() => {
-        playEffect(monitorAudioRef, .86);
+        playEffect(monitorAudioRef);
         setPhase("office");
         setOnline(true);
       }, 1750)];
@@ -292,7 +291,7 @@ export default function Home() {
     setSound(next);
     const context = officeAudioContextRef.current;
     const gain = officeAudioGainRef.current;
-    if (context && gain) gain.gain.setTargetAtTime(next ? .72 : 0, context.currentTime, .025);
+    if (context && gain) gain.gain.setTargetAtTime(next ? .5 : 0, context.currentTime, .025);
   }
 
   const sceneStyle = {
@@ -401,9 +400,9 @@ export default function Home() {
             </div>
           )}
 
-          {audioBlocked && phase !== "respawn" && (
+          {!initialized && phase === "camera" && (
             <button className="audio-unlock" type="button" onClick={enableIntroAudio}>
-              ENABLE SOUND / RESTART SEQUENCE
+              CLICK TO INITIALIZE CAMERA
             </button>
           )}
         </section>
