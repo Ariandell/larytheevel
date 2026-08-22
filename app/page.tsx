@@ -463,6 +463,13 @@ export default function Home() {
 
   return (
     <main className={`night-shift phase-${phase} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""}`} style={sceneStyle}>
+      <aside className="rotate-device" aria-label="Rotate your phone to landscape mode">
+        <div className="rotate-phone" aria-hidden="true"><i /></div>
+        <span>MOBILE SURVEILLANCE PROTOCOL</span>
+        <strong>ROTATE YOUR DEVICE</strong>
+        <p>TURN YOUR PHONE SIDEWAYS TO ENTER THE NIGHT SHIFT.</p>
+      </aside>
+
       <svg className="screen-mask-defs" aria-hidden="true" focusable="false">
         <defs>
           {monitorIds.map((id) => (
