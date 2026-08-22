@@ -20,6 +20,13 @@ type ScreenConfigs = Record<MonitorId, MonitorConfig>;
 
 const monitorIds: MonitorId[] = ["left", "center", "right"];
 const cornerIds: CornerId[] = ["tl", "tr", "br", "bl"];
+const introTiming = {
+  battery: 1000,
+  powerOff: 2400,
+  larry: 3000,
+  died: 8460,
+  respawn: 16520,
+};
 
 // Final monitor geometry captured from the approved on-page calibration.
 const screens: ScreenConfigs = {
@@ -131,6 +138,11 @@ function makeMaskPath(config: MonitorConfig) {
 
 export default function Home() {
   const loopRef = useRef<HTMLVideoElement>(null);
+  const batteryAudioRef = useRef<HTMLAudioElement>(null);
+  const cameraOffAudioRef = useRef<HTMLAudioElement>(null);
+  const larryAudioRef = useRef<HTMLAudioElement>(null);
+  const deathAudioRef = useRef<HTMLAudioElement>(null);
+  const monitorAudioRef = useRef<HTMLAudioElement>(null);
   const officeStartedRef = useRef(false);
   const phaseTimersRef = useRef<number[]>([]);
   const officeAudioDataRef = useRef<ArrayBuffer | null>(null);
@@ -141,25 +153,23 @@ export default function Home() {
   const [phase, setPhase] = useState<IntroPhase>("camera");
   const [focus, setFocus] = useState<MonitorId | null>(null);
   const [sound, setSound] = useState(true);
+  const [audioBlocked, setAudioBlocked] = useState(false);
 
   useEffect(() => {
     const audioRequest = new AbortController();
     loopRef.current?.load();
     const larryPreload = new window.Image();
     larryPreload.src = "/assets/larry-dark-plate-v1.png";
-    fetch("/assets/office-ambience-loop.wav", { signal: audioRequest.signal })
+    fetch("/assets/audio/office-ambience-loop.wav", { signal: audioRequest.signal })
       .then((response) => response.arrayBuffer())
       .then((data) => { officeAudioDataRef.current = data; })
       .catch(() => { /* Room ambience can still load after the respawn click. */ });
-    phaseTimersRef.current = [
-      window.setTimeout(() => setPhase("blackout"), 2400),
-      window.setTimeout(() => setPhase("larry"), 2800),
-      window.setTimeout(() => setPhase("died"), 5350),
-      window.setTimeout(() => setPhase("respawn"), 7050),
-    ];
+    scheduleIntro();
     return () => {
       audioRequest.abort();
       phaseTimersRef.current.forEach(window.clearTimeout);
+      [batteryAudioRef, cameraOffAudioRef, larryAudioRef, deathAudioRef, monitorAudioRef]
+        .forEach((ref) => ref.current?.pause());
       try { officeAudioSourceRef.current?.stop(); } catch { /* Already stopped. */ }
       void officeAudioContextRef.current?.close();
     };
@@ -168,6 +178,53 @@ export default function Home() {
   function clearPhaseTimers() {
     phaseTimersRef.current.forEach(window.clearTimeout);
     phaseTimersRef.current = [];
+  }
+
+  function playEffect(ref: { current: HTMLAudioElement | null }, volume = 1) {
+    if (!sound || !ref.current) return;
+    ref.current.currentTime = 0;
+    ref.current.volume = volume;
+    ref.current.muted = false;
+    void ref.current.play().catch(() => setAudioBlocked(true));
+  }
+
+  function scheduleIntro() {
+    clearPhaseTimers();
+    officeStartedRef.current = false;
+    setOnline(false);
+    setFocus(null);
+    setPhase("camera");
+    phaseTimersRef.current = [
+      window.setTimeout(() => playEffect(batteryAudioRef, .82), introTiming.battery),
+      window.setTimeout(() => {
+        setPhase("blackout");
+        playEffect(cameraOffAudioRef, .9);
+      }, introTiming.powerOff),
+      window.setTimeout(() => {
+        setPhase("larry");
+        playEffect(larryAudioRef, .82);
+      }, introTiming.larry),
+      window.setTimeout(() => {
+        setPhase("died");
+        playEffect(deathAudioRef, .88);
+      }, introTiming.died),
+      window.setTimeout(() => setPhase("respawn"), introTiming.respawn),
+    ];
+  }
+
+  async function enableIntroAudio() {
+    const unlockAudio = batteryAudioRef.current;
+    if (unlockAudio) {
+      unlockAudio.volume = 0;
+      try {
+        await unlockAudio.play();
+        unlockAudio.pause();
+        unlockAudio.currentTime = 0;
+      } catch { /* The next explicit media action may still unlock playback. */ }
+    }
+    setSound(true);
+    setAudioBlocked(false);
+    scheduleIntro();
   }
 
   async function startOfficeAmbience() {
@@ -180,7 +237,7 @@ export default function Home() {
     officeAudioContextRef.current = context;
     await context.resume();
     const encodedAudio = officeAudioDataRef.current
-      ?? await fetch("/assets/office-ambience-loop.wav").then((response) => response.arrayBuffer());
+      ?? await fetch("/assets/audio/office-ambience-loop.wav").then((response) => response.arrayBuffer());
     const buffer = await context.decodeAudioData(encodedAudio.slice(0));
     const gain = context.createGain();
     const source = context.createBufferSource();
@@ -202,6 +259,7 @@ export default function Home() {
     const loop = loopRef.current;
     if (!loop) {
       phaseTimersRef.current = [window.setTimeout(() => {
+        playEffect(monitorAudioRef, .86);
         setPhase("office");
         setOnline(true);
       }, 1750)];
@@ -220,6 +278,7 @@ export default function Home() {
     }
     const revealRoom = () => {
       phaseTimersRef.current = [window.setTimeout(() => {
+        playEffect(monitorAudioRef, .86);
         setPhase("office");
         setOnline(true);
       }, 1750)];
@@ -254,7 +313,7 @@ export default function Home() {
       </svg>
 
       <div className="scene-frame" aria-label="Evil Larry night surveillance room">
-        <video ref={loopRef} className="room-video loop-video" src="/assets/looped.mp4" preload="auto" playsInline loop muted />
+        <video ref={loopRef} className="room-video loop-video" src="/assets/video/looped.mp4" preload="auto" playsInline loop muted />
 
         {monitorIds.map((id) => {
           const config = screens[id];
@@ -341,8 +400,20 @@ export default function Home() {
               <button type="button" onClick={respawn}>RESPAWN</button>
             </div>
           )}
+
+          {audioBlocked && phase !== "respawn" && (
+            <button className="audio-unlock" type="button" onClick={enableIntroAudio}>
+              ENABLE SOUND / RESTART SEQUENCE
+            </button>
+          )}
         </section>
       )}
+
+      <audio ref={batteryAudioRef} src="/assets/audio/battery-warning.mp3" preload="auto" />
+      <audio ref={cameraOffAudioRef} src="/assets/audio/camera-power-off.mp3" preload="auto" />
+      <audio ref={larryAudioRef} src="/assets/audio/larry-theme.mp3" preload="auto" />
+      <audio ref={deathAudioRef} src="/assets/audio/you-died.mp3" preload="auto" />
+      <audio ref={monitorAudioRef} src="/assets/audio/monitor-power-on.mp3" preload="auto" />
 
       <header className="hud hud-top" aria-hidden={!online}>
         <div><span className="status-dot" /> SYSTEM ONLINE</div>
