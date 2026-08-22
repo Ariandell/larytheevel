@@ -17,6 +17,14 @@ type MonitorConfig = {
   screenAlpha: number;
 };
 type ScreenConfigs = Record<MonitorId, MonitorConfig>;
+type GenerationState = "idle" | "working" | "ready";
+type ArchiveItem = {
+  id: number;
+  name: string;
+  style: string;
+  source: string;
+  tone: number;
+};
 
 const monitorIds: MonitorId[] = ["left", "center", "right"];
 const cornerIds: CornerId[] = ["tl", "tr", "br", "bl"];
@@ -79,6 +87,24 @@ const monitorCopy: Record<MonitorId, { code: string; title: string; detail: stri
   center: { code: "CAM-06", title: "LIVE SURVEILLANCE", detail: "Central corridor feed. Motion status: unknown." },
   right: { code: "ARC-09", title: "THE ARCHIVES", detail: "Recovered footage, classified memes and sightings." },
 };
+
+const desktopApps = [
+  { id: "x", glyph: "X", label: "X / TWITTER", detail: "PUBLIC TRANSMISSION CHANNEL // LINK AWAITING CONFIGURATION" },
+  { id: "telegram", glyph: "TG", label: "TELEGRAM", detail: "LARRY COMMUNITY UPLINK // LINK AWAITING CONFIGURATION" },
+  { id: "contract", glyph: "0X", label: "CONTRACT", detail: "TOKEN ADDRESS // NOT YET ASSIGNED" },
+  { id: "chart", glyph: "▲", label: "LIVE CHART", detail: "MARKET SIGNAL TERMINAL // DATA FEED OFFLINE" },
+  { id: "lore", glyph: "?", label: "LARRY.DAT", detail: "CLASSIFIED ORIGIN FILE // 9 RECORDS RECOVERED" },
+  { id: "terminal", glyph: ">_", label: "TERMINAL", detail: "ROOT ACCESS DENIED // LARRY IS WATCHING" },
+];
+
+const generatorStyles = ["NIGHT WATCH", "CURSED ID", "MEME LORD", "VOID ICON"];
+
+const initialArchive: ArchiveItem[] = [
+  { id: 301, name: "LARRY_0301", style: "NIGHT WATCH", source: "/assets/larry-dark-plate-v1.png", tone: 0 },
+  { id: 245, name: "LARRY_0245", style: "CURSED ID", source: "/assets/larry-dark-plate-v1.png", tone: 1 },
+  { id: 119, name: "LARRY_0119", style: "VOID ICON", source: "/assets/larry-dark-plate-v1.png", tone: 2 },
+  { id: 66, name: "LARRY_0066", style: "MEME LORD", source: "/assets/larry-dark-plate-v1.png", tone: 3 },
+];
 
 function distance(a: Point, b: Point) {
   return Math.hypot(b.x - a.x, b.y - a.y);
@@ -154,6 +180,13 @@ export default function Home() {
   const [focus, setFocus] = useState<MonitorId | null>(null);
   const [sound, setSound] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [selectedApp, setSelectedApp] = useState(desktopApps[0].id);
+  const [generatorStyle, setGeneratorStyle] = useState(generatorStyles[0]);
+  const [generatorPrompt, setGeneratorPrompt] = useState("Larry as a sinister profile picture, centered portrait, direct eye contact");
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [generationState, setGenerationState] = useState<GenerationState>("idle");
+  const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>(initialArchive);
+  const [selectedArchive, setSelectedArchive] = useState(initialArchive[0].id);
 
   useEffect(() => {
     const audioRequest = new AbortController();
@@ -174,15 +207,19 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => () => {
+    if (uploadPreview?.startsWith("blob:")) URL.revokeObjectURL(uploadPreview);
+  }, [uploadPreview]);
+
   function clearPhaseTimers() {
     phaseTimersRef.current.forEach(window.clearTimeout);
     phaseTimersRef.current = [];
   }
 
-  function playEffect(ref: { current: HTMLAudioElement | null }) {
+  function playEffect(ref: { current: HTMLAudioElement | null }, volume = .5) {
     if (!sound || !ref.current) return;
     ref.current.currentTime = 0;
-    ref.current.volume = .5;
+    ref.current.volume = volume;
     ref.current.muted = false;
     void ref.current.play().catch(() => { /* Playback has already been user-unlocked. */ });
   }
@@ -201,7 +238,7 @@ export default function Home() {
       }, introTiming.powerOff),
       window.setTimeout(() => {
         setPhase("larry");
-        playEffect(larryAudioRef);
+        playEffect(larryAudioRef, .3);
       }, introTiming.larry),
       window.setTimeout(() => {
         setPhase("died");
@@ -294,10 +331,37 @@ export default function Home() {
     if (context && gain) gain.gain.setTargetAtTime(next ? .5 : 0, context.currentTime, .025);
   }
 
+  function handleLarryUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadPreview(URL.createObjectURL(file));
+    setGenerationState("idle");
+  }
+
+  function generateLarry() {
+    if (generationState === "working") return;
+    setGenerationState("working");
+    window.setTimeout(() => {
+      const id = Date.now();
+      const item: ArchiveItem = {
+        id,
+        name: `LARRY_${String(id).slice(-4)}`,
+        style: generatorStyle,
+        source: uploadPreview || "/assets/larry-dark-plate-v1.png",
+        tone: archiveItems.length % 4,
+      };
+      setArchiveItems((items) => [item, ...items]);
+      setSelectedArchive(id);
+      setGenerationState("ready");
+    }, 1200);
+  }
+
   const sceneStyle = {
     "--focus-x": focus === "left" ? "25%" : focus === "right" ? "75%" : "50%",
     "--focus-y": focus ? "61%" : "50%",
   } as CSSProperties;
+  const activeApp = desktopApps.find((app) => app.id === selectedApp) || desktopApps[0];
+  const activeArchive = archiveItems.find((item) => item.id === selectedArchive) || archiveItems[0];
 
   return (
     <main className={`night-shift phase-${phase} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""}`} style={sceneStyle}>
@@ -340,7 +404,17 @@ export default function Home() {
                 <span className="monitor-static" />
                 <span className="monitor-ui">
                   <span className="monitor-code">{monitorCopy[id].code}</span>
-                  <strong>{monitorCopy[id].title}</strong>
+                  {id === "center" ? (
+                    <span className="mini-desktop" aria-hidden="true">
+                      {desktopApps.slice(0, 6).map((app) => <i key={app.id}>{app.glyph}</i>)}
+                    </span>
+                  ) : id === "right" ? (
+                    <span className="mini-archive" aria-hidden="true">
+                      {initialArchive.slice(0, 4).map((item) => <i key={item.id} />)}
+                    </span>
+                  ) : (
+                    <strong>{monitorCopy[id].title}</strong>
+                  )}
                   <span className="monitor-prompt">[ CLICK TO OPEN ]</span>
                 </span>
               </span>
@@ -431,13 +505,99 @@ export default function Home() {
         <section className="focus-panel" aria-live="polite">
           <div className="focus-noise" aria-hidden="true" />
           <button className="back-button" type="button" onClick={() => setFocus(null)}>← RETURN TO OFFICE</button>
-          <p>{monitorCopy[focus].code} / ONLINE</p>
-          <h2>{monitorCopy[focus].title}</h2>
-          <span>{monitorCopy[focus].detail}</span>
-          <div className="focus-placeholder">
-            <span>MODULE PREVIEW</span>
-            <strong>{focus === "center" ? "NO MOVEMENT DETECTED" : "AWAITING CONNECTION"}</strong>
-          </div>
+          <header className="module-heading">
+            <div>
+              <p>{monitorCopy[focus].code} / ONLINE</p>
+              <h2>{monitorCopy[focus].title}</h2>
+              <span>{monitorCopy[focus].detail}</span>
+            </div>
+            <small>SECURE NODE&nbsp;&nbsp;●</small>
+          </header>
+
+          {focus === "center" && (
+            <div className="desktop-workspace">
+              <div className="desktop-icons" aria-label="Larry OS applications">
+                {desktopApps.map((app) => (
+                  <button className={selectedApp === app.id ? "is-selected" : ""} type="button" key={app.id} onClick={() => setSelectedApp(app.id)}>
+                    <i>{app.glyph}</i>
+                    <span>{app.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="system-window">
+                <header><span>LARRY_OS / {activeApp.label}</span><i>□ ×</i></header>
+                <div className="system-window-body">
+                  <p>&gt; OPENING {activeApp.id.toUpperCase()}.EXE</p>
+                  <strong>{activeApp.detail}</strong>
+                  <div className="system-lines"><i /><i /><i /></div>
+                  <small>STATUS: STANDBY&nbsp;&nbsp;|&nbsp;&nbsp;ACCESS: PUBLIC</small>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {focus === "left" && (
+            <div className="generator-workspace">
+              <div className="generator-source">
+                <div className={`generator-preview archive-tone-${archiveItems.length % 4}`}>
+                  <img src={uploadPreview || "/assets/larry-dark-plate-v1.png"} alt="Larry source portrait preview" />
+                  <span>{uploadPreview ? "SUBJECT LOADED" : "DEFAULT SUBJECT"}</span>
+                </div>
+                <label className="upload-control">
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLarryUpload} />
+                  UPLOAD LARRY PHOTO
+                </label>
+                <small>JPG / PNG / WEBP&nbsp;&nbsp;·&nbsp;&nbsp;MAX 10 MB</small>
+              </div>
+              <div className="generator-controls">
+                <label>
+                  <span>PORTRAIT DIRECTIVE</span>
+                  <textarea value={generatorPrompt} onChange={(event) => setGeneratorPrompt(event.target.value)} maxLength={280} />
+                </label>
+                <fieldset>
+                  <legend>VISUAL PROFILE</legend>
+                  <div className="style-options">
+                    {generatorStyles.map((style) => (
+                      <button className={generatorStyle === style ? "is-selected" : ""} type="button" key={style} onClick={() => setGeneratorStyle(style)}>{style}</button>
+                    ))}
+                  </div>
+                </fieldset>
+                <div className="generator-readout"><span>OUTPUT</span><strong>1:1 AVATAR / 1024 PX</strong></div>
+                <div className="generator-readout"><span>MODEL</span><strong>IMAGE API / PENDING</strong></div>
+                <button className="generate-action" type="button" onClick={generateLarry} disabled={generationState === "working"}>
+                  {generationState === "working" ? "SUMMONING..." : generationState === "ready" ? "SUMMON AGAIN" : "SUMMON LARRY"}
+                </button>
+                <small className="generator-status">
+                  {generationState === "ready" ? "GENERATION STORED IN THE ARCHIVES" : "FRONTEND READY // API CONNECTION REQUIRED"}
+                </small>
+              </div>
+            </div>
+          )}
+
+          {focus === "right" && (
+            <div className="archive-workspace">
+              <div className="archive-inspector">
+                <div className={`archive-main-image archive-tone-${activeArchive.tone}`}>
+                  <img src={activeArchive.source} alt={`${activeArchive.name} generated Larry portrait`} />
+                </div>
+                <div><span>FILE</span><strong>{activeArchive.name}.PNG</strong></div>
+                <div><span>PROFILE</span><strong>{activeArchive.style}</strong></div>
+                <a href={activeArchive.source} download={`${activeArchive.name}.png`}>DOWNLOAD FILE</a>
+              </div>
+              <div className="archive-browser">
+                <header><span>RECOVERED GENERATIONS</span><small>{archiveItems.length} FILES</small></header>
+                <div className="archive-grid">
+                  {archiveItems.map((item) => (
+                    <button className={selectedArchive === item.id ? "is-selected" : ""} type="button" key={item.id} onClick={() => setSelectedArchive(item.id)}>
+                      <span className={`archive-thumb archive-tone-${item.tone}`}><img src={item.source} alt="" /></span>
+                      <strong>{item.name}</strong>
+                      <small>{item.style}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       )}
     </main>
