@@ -77,8 +77,11 @@ button { font:inherit; }
 .death-screen strong { color:rgba(155,24,20,.92); font-family:Georgia,"Times New Roman",serif; font-size:clamp(58px,12vw,180px); font-weight:400; line-height:.8; letter-spacing:.04em; text-shadow:0 2px 2px #000,0 0 22px rgba(116,14,12,.35); animation:deathTitle 8057ms ease both; }
 .death-screen span { color:rgba(220,220,215,.28); font-size:7px; letter-spacing:.22em; animation:deathSubtitle 8057ms ease both; }
 
-.audio-unlock { position:absolute; z-index:30; left:50%; bottom:clamp(18px,3vw,36px); padding:8px 12px; color:rgba(235,235,230,.76); border:1px solid rgba(235,235,230,.32); background:rgba(4,5,4,.72); transform:translateX(-50%); cursor:pointer; font-size:7px; letter-spacing:.16em; }
-.audio-unlock:hover,.audio-unlock:focus-visible { color:#10110f; background:#e2e2dc; outline:none; }
+.camera-initialize { position:absolute; z-index:30; inset:0; display:grid; place-content:center; gap:8px; width:100%; padding:0; color:rgba(235,235,230,.76); border:0; background:transparent; cursor:pointer; text-align:center; letter-spacing:.16em; }
+.camera-initialize span { font-size:clamp(10px,1.15vw,15px); text-shadow:0 0 10px rgba(220,230,218,.28); animation:initializePulse 1.2s steps(2,end) infinite; }
+.camera-initialize small { font-size:7px; opacity:.52; letter-spacing:.24em; }
+.camera-initialize:hover span { color:#f0f0eb; text-shadow:0 0 14px rgba(230,240,228,.5); }
+.camera-initialize:focus-visible { outline:1px solid rgba(235,235,230,.42); outline-offset:-12px; }
 
 .respawn-screen { position:absolute; z-index:4; inset:0; display:grid; place-content:center; justify-items:center; gap:34px; text-align:center; background:radial-gradient(circle at 50% 45%,#111210 0,#050605 42%,#010201 100%); }
 .respawn-screen::before { content:""; position:absolute; inset:0; opacity:.18; background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.06) 4px 5px); }
@@ -119,6 +122,7 @@ button { font:inherit; }
 @keyframes cameraAcquire { 0%{opacity:0;filter:brightness(4);transform:scaleY(.03)} 52%{opacity:1;filter:brightness(2);transform:scaleY(1.03)} 100%{filter:brightness(1);transform:scaleY(1)} }
 @keyframes nightLampPulse { 0%,46%,100%{opacity:.78;filter:brightness(1)} 47%,53%{opacity:.3;filter:brightness(.5)} 54%,62%{opacity:.9;filter:brightness(1.2)} }
 @keyframes recordBlink { 0%,55%{opacity:1} 56%,100%{opacity:.18} }
+@keyframes initializePulse { 0%,55%{opacity:1} 56%,100%{opacity:.42} }
 @keyframes batteryWarning { 0%,19%{opacity:0} 20%,38%{opacity:1} 39%,56%{opacity:0} 57%,75%{opacity:1} 76%,87%{opacity:0} 88%,100%{opacity:1} }
 @keyframes cameraPowerOff { 0%{opacity:1;filter:grayscale(1) brightness(1);transform:scale(1)} 28%{filter:grayscale(1) brightness(2.7);transform:scaleX(1) scaleY(.035)} 62%{opacity:1;filter:brightness(5);transform:scaleX(.16) scaleY(.012)} 100%{opacity:0;filter:brightness(8);transform:scaleX(.005) scaleY(.005)} }
 @keyframes cameraOffFlare { 0%,18%{opacity:0;transform:scaleX(.1)} 30%{opacity:1;transform:scaleX(1)} 66%{opacity:.9;transform:scaleX(.15)} 100%{opacity:0;transform:scaleX(.01)} }

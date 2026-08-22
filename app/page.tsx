@@ -401,8 +401,9 @@ export default function Home() {
           )}
 
           {!initialized && phase === "camera" && (
-            <button className="audio-unlock" type="button" onClick={enableIntroAudio}>
-              CLICK TO INITIALIZE CAMERA
+            <button className="camera-initialize" type="button" onClick={enableIntroAudio}>
+              <span>CLICK ANYWHERE</span>
+              <small>TO INITIALIZE CAMERA</small>
             </button>
           )}
         </section>
