@@ -209,6 +209,7 @@ export default function Home() {
   const [selectedApp, setSelectedApp] = useState(desktopApps[0].id);
   const [generatorStyle, setGeneratorStyle] = useState(generatorStyles[0]);
   const [generationState, setGenerationState] = useState<GenerationState>("idle");
+  const [generatedSource, setGeneratedSource] = useState<string | null>(null);
   const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>(initialArchive);
   const [selectedArchive, setSelectedArchive] = useState(initialArchive[0].id);
 
@@ -383,6 +384,7 @@ export default function Home() {
         lastSeen: "INSIDE THE GENERATOR",
         fileExtension: extension,
       };
+      setGeneratedSource(item.source);
       setArchiveItems((items) => [item, ...items]);
       setSelectedArchive(id);
       setGenerationState("ready");
@@ -619,8 +621,8 @@ export default function Home() {
             <div className="generator-workspace">
               <div className="generator-source">
                 <div className={`generator-preview archive-tone-${generatorStyles.indexOf(generatorStyle) % 4}`}>
-                  <img src="/assets/larry-dark-plate-v1.png" alt="Larry source portrait preview" />
-                  <span>SUBJECT LOCKED // LARRY</span>
+                  <img src={generatedSource || "/assets/larry-dark-plate-v1.png"} alt={generatedSource ? "Generated Larry avatar" : "Larry source portrait preview"} />
+                  <span>{generatedSource ? "OUTPUT RECEIVED // LARRY" : "SUBJECT LOCKED // LARRY"}</span>
                 </div>
                 <small>THE SUBJECT AND GENERATION PROMPT ARE SYSTEM-LOCKED.</small>
               </div>
@@ -645,6 +647,9 @@ export default function Home() {
                 <small className="generator-status">
                   {generationState === "ready" ? "GENERATION STORED IN THE ARCHIVES" : generationState === "error" ? "SIGNAL LOST // TRY AGAIN" : "SUBJECT LOCKED // READY TO SUMMON"}
                 </small>
+                {generationState === "ready" && (
+                  <button className="archive-jump" type="button" onClick={() => setFocus("right")}>VIEW IN ARCHIVES →</button>
+                )}
               </div>
             </div>
           )}

@@ -176,6 +176,8 @@ button { font:inherit; }
 .generate-action { min-height:46px; color:#071006; border:1px solid #bcd6ad; background:#bcd6ad; cursor:pointer; font-size:10px; font-weight:700; letter-spacing:.16em; }
 .generate-action:hover,.generate-action:focus-visible { color:#e1eed9; background:transparent; outline:none; box-shadow:0 0 24px rgba(173,215,151,.13); }
 .generate-action:disabled { opacity:.54; cursor:wait; }
+.archive-jump { align-self:flex-start; padding:0; color:#bfd9ae; border:0; background:transparent; cursor:pointer; font-size:8px; letter-spacing:.12em; }
+.archive-jump:hover,.archive-jump:focus-visible { color:#fff; outline:none; text-shadow:0 0 12px rgba(191,217,174,.65); }
 
 .archive-workspace { display:grid; flex:1; grid-template-columns:minmax(220px,.72fr) minmax(420px,1.5fr); gap:24px; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
 .archive-inspector { display:flex; flex-direction:column; gap:12px; }
