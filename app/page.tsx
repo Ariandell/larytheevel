@@ -354,7 +354,7 @@ export default function Home() {
 
       {phase !== "lamp" && phase !== "office" && (
         <section className={`cold-open cold-open-${phase}`} aria-live="polite">
-          {(phase === "camera" || phase === "blackout") && (
+          {initialized && (phase === "camera" || phase === "blackout") && (
             <div className={`camera-stage ${phase === "blackout" ? "is-powering-off" : ""}`}>
               <div className="camera-room-placeholder" aria-hidden="true" />
               <div className="camera-interface">
