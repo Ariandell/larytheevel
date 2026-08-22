@@ -300,7 +300,7 @@ export default function Home() {
           {phase === "respawn" && (
             <div className="respawn-screen">
               <span>NIGHT SHIFT TERMINATED</span>
-              <button type="button" onClick={respawn}>ВІДРОДИТИСЬ</button>
+              <button type="button" onClick={respawn}>RESPAWN</button>
             </div>
           )}
         </section>
