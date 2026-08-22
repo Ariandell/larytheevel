@@ -294,6 +294,7 @@ export default function Home() {
     await context.resume();
     const encodedAudio = officeAudioDataRef.current
       ?? await fetch("/assets/audio/office-ambience-loop.wav").then((response) => response.arrayBuffer());
+    if (!encodedAudio) return;
     const buffer = await context.decodeAudioData(encodedAudio.slice(0));
     const gain = context.createGain();
     const source = context.createBufferSource();
