@@ -117,9 +117,10 @@ const memeNames = [
 const memeReports = ["THE GROUP CHAT", "A POTATO CAMERA", "AN UNRELIABLE WITNESS", "THE NEIGHBOR'S RING CAM", "THE KITCHEN FRIDGE", "A SHAKY HAND" ];
 const memeThreats = ["MILDLY CONCERNING", "SNACK-MOTIVATED", "TOO SILLY TO TRUST", "DO NOT PET", "PROBABLY HUNGRY", "POSSIBLY OMNISCIENT"];
 const memeLocations = ["YOUR PERIPHERAL VISION", "BEHIND THE CURTAIN", "THE KITCHEN AT 3:00 AM", "UNDER THE DESK", "ON THE WIFI", "IN THE WALLS"];
+const memeFileNumbers = Array.from({ length: 33 }, (_, index) => index + 1).filter((number) => ![11, 12].includes(number));
 
-const initialArchive: ArchiveItem[] = Array.from({ length: 33 }, (_, index) => {
-  const number = String(index + 1).padStart(2, "0");
+const initialArchive: ArchiveItem[] = memeFileNumbers.map((fileNumber, index) => {
+  const number = String(fileNumber).padStart(2, "0");
   return {
     id: 1000 + index,
     name: memeNames[index],
