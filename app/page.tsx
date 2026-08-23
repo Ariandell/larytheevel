@@ -640,7 +640,7 @@ export default function Home() {
                         <span>CLASSIFIED / EYES ONLY</span>
                       </header>
                       <div className="lore-hero">
-                        <img src="/assets/larry-meme-original.jpg" alt="Original Larry meme sighting" />
+                        <img src="/assets/larry-cosplay-reference.png" alt="Larry cosplay reference" />
                         <div>
                           <small>SUBJECT 001</small>
                           <h3>LARRY</h3>
@@ -688,20 +688,20 @@ export default function Home() {
             <div className="generator-workspace">
               <div className="generator-source">
                 <div className="generator-preview">
-                  <img src={generatedSource || "/assets/larry-dark-plate-v1.png"} alt={generatedSource ? "Generated Larry avatar" : "Larry source portrait preview"} />
+                  <img src={generatedSource || "/assets/larry-cosplay-reference.png"} alt={generatedSource ? "Generated Larry avatar" : "Larry cosplay reference"} />
                   <span>{generatedSource ? "OUTPUT RECEIVED // LARRY" : "SUBJECT LOCKED // LARRY"}</span>
                 </div>
                 <small>THE SUBJECT AND GENERATION PROMPT ARE SYSTEM-LOCKED.</small>
               </div>
               <div className="generator-controls">
                 <div className="random-larry-question">
-                  <span>IDENTITY ROULETTE // 100 POSSIBLE FORMS</span>
-                  <strong>WHICH LARRY IS WATCHING YOU?</strong>
-                  <small>ONE SIMPLE MEME LOOK WILL BE SELECTED AT RANDOM.</small>
+                  <span>COSPLAY RANDOMIZER // LARRY PRESERVED</span>
+                  <strong>WHICH COSPLAY DID LARRY CHOOSE?</strong>
+                  <small>THE SYSTEM WILL INVENT A NEW COSPLAY AT RANDOM.</small>
                 </div>
                 <div className="locked-directive">
                   <span>LOCKED GENERATION DIRECTIVE</span>
-                  <strong>ORIGINAL LARRY UNTOUCHED // PROP + BACKGROUND ONLY</strong>
+                  <strong>ORIGINAL POSE + LIGHTING // SEAMLESS COSPLAY EDIT</strong>
                 </div>
                 <div className="generator-readout"><span>OUTPUT</span><strong>1:1 AVATAR / 1024 PX</strong></div>
                 <div className="generator-readout"><span>MODEL</span><strong>NANO BANANA 2 LITE / 1K</strong></div>
@@ -709,7 +709,7 @@ export default function Home() {
                   {generationState === "working" ? "FINDING YOUR LARRY..." : generationState === "ready" ? "FIND ANOTHER LARRY" : "FIND MY LARRY"}
                 </button>
                 <small className="generator-status">
-                  {generationState === "ready" ? `${generatedPresetName} // SAVED TO YOUR LOCAL ARCHIVE` : generationState === "error" ? "SIGNAL LOST // TRY AGAIN" : generationState === "working" ? "ROLLING ONE OF 100 IDENTITIES..." : "LARRY LOCKED // READY TO ROLL"}
+                  {generationState === "ready" ? `${generatedPresetName} // SAVED TO YOUR LOCAL ARCHIVE` : generationState === "error" ? "SIGNAL LOST // TRY AGAIN" : generationState === "working" ? "DESIGNING LARRY'S COSPLAY..." : "LARRY LOCKED // READY TO TRANSFORM"}
                 </small>
                 {generationState === "ready" && (
                   <div className="generator-result-actions">
