@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
 
 type MonitorId = "left" | "center" | "right";
 type IntroPhase = "camera" | "blackout" | "larry" | "died" | "respawn" | "lamp" | "office";
@@ -18,14 +18,6 @@ type MonitorConfig = {
 };
 type ScreenConfigs = Record<MonitorId, MonitorConfig>;
 type GenerationState = "idle" | "working" | "ready" | "error";
-type MobileDragState = {
-  mode: "move" | "corner" | "curve";
-  corner?: CornerId;
-  side?: SideId;
-  startX: number;
-  startY: number;
-  config: MonitorConfig;
-};
 type ArchiveItem = {
   id: number;
   name: string;
@@ -42,7 +34,6 @@ type ArchiveItem = {
 
 const personalArchiveDatabase = "evil-larry-personal-archive";
 const personalArchiveStore = "generations";
-const mobileCalibrationStorageKey = "evil-larry-mobile-crt-calibration-v1";
 const deathSceneDuration = 3000;
 
 const monitorIds: MonitorId[] = ["left", "center", "right"];
@@ -99,21 +90,6 @@ const screens: ScreenConfigs = {
     contentScale: 1,
     screenAlpha: .24,
   },
-};
-
-const mobileScreenDefault: MonitorConfig = {
-  corners: {
-    tl: { x: 27, y: 40.5 },
-    tr: { x: 73, y: 40.5 },
-    br: { x: 73, y: 60.5 },
-    bl: { x: 27, y: 60.5 },
-  },
-  curveTop: 8,
-  curveRight: 8,
-  curveBottom: 8,
-  curveLeft: 8,
-  contentScale: 1,
-  screenAlpha: .52,
 };
 
 const monitorCopy: Record<MonitorId, { code: string; title: string; detail: string }> = {
@@ -195,14 +171,6 @@ function distance(a: Point, b: Point) {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
-function cloneConfig<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 function boundsOf(config: MonitorConfig) {
   const points = cornerIds.map((corner) => config.corners[corner]);
   const xs = points.map((point) => point.x);
@@ -212,17 +180,6 @@ function boundsOf(config: MonitorConfig) {
   const right = Math.max(...xs);
   const bottom = Math.max(...ys);
   return { left, top, width: right - left, height: bottom - top };
-}
-
-function localizeConfig(config: MonitorConfig): MonitorConfig {
-  const bounds = boundsOf(config);
-  return {
-    ...config,
-    corners: Object.fromEntries(cornerIds.map((corner) => [corner, {
-      x: (config.corners[corner].x - bounds.left) / bounds.width * 100,
-      y: (config.corners[corner].y - bounds.top) / bounds.height * 100,
-    }])) as Record<CornerId, Point>,
-  };
 }
 
 function screenRotation(config: MonitorConfig) {
@@ -275,27 +232,7 @@ function makeMaskPath(config: MonitorConfig) {
   return makeScreenPath(config, true);
 }
 
-function sideEdge(config: MonitorConfig, side: SideId): [Point, Point] {
-  const { tl, tr, br, bl } = config.corners;
-  if (side === "top") return [tl, tr];
-  if (side === "right") return [tr, br];
-  if (side === "bottom") return [br, bl];
-  return [bl, tl];
-}
-
-function sideHandlePoint(config: MonitorConfig, side: SideId): Point {
-  const [a, b] = sideEdge(config, side);
-  const midpoint = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const length = Math.hypot(dx, dy) || 1;
-  const normal = { x: dy / length, y: -dx / length };
-  const strength = curveGeometry(config).strengths[side];
-  return { x: midpoint.x + normal.x * strength * .75, y: midpoint.y + normal.y * strength * .75 };
-}
-
 export default function Home() {
-  const sceneRef = useRef<HTMLDivElement>(null);
   const loopRef = useRef<HTMLVideoElement>(null);
   const verticalIntroRef = useRef<HTMLVideoElement>(null);
   const verticalLoopRef = useRef<HTMLVideoElement>(null);
@@ -312,7 +249,6 @@ export default function Home() {
   const officeAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const officeAudioGainRef = useRef<GainNode | null>(null);
   const roomTransitionRef = useRef(0);
-  const mobileDragRef = useRef<MobileDragState | null>(null);
   const [online, setOnline] = useState(false);
   const [phase, setPhase] = useState<IntroPhase>("camera");
   const [focus, setFocus] = useState<MonitorId | null>(null);
@@ -326,8 +262,6 @@ export default function Home() {
   const [personalGenerationCount, setPersonalGenerationCount] = useState(0);
   const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>(initialArchive);
   const [selectedArchive, setSelectedArchive] = useState(initialArchive[0].id);
-  const [mobileScreen, setMobileScreen] = useState<MonitorConfig>(() => cloneConfig(mobileScreenDefault));
-  const [mobileCalibrationOpen, setMobileCalibrationOpen] = useState(false);
 
   useEffect(() => {
     const audioRequest = new AbortController();
@@ -348,74 +282,6 @@ export default function Home() {
     };
   }, []);
 
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(mobileCalibrationStorageKey);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as Partial<MonitorConfig>;
-      if (!parsed.corners) return;
-      setMobileScreen({ ...cloneConfig(mobileScreenDefault), ...parsed, corners: { ...mobileScreenDefault.corners, ...parsed.corners } });
-    } catch {
-      // An invalid local calibration is safely ignored.
-    }
-  }, []);
-
-  useEffect(() => {
-    function movePointer(event: PointerEvent) {
-      const drag = mobileDragRef.current;
-      const frame = sceneRef.current;
-      if (!drag || !frame) return;
-      event.preventDefault();
-      const rect = frame.getBoundingClientRect();
-      const dx = (event.clientX - drag.startX) / rect.width * 100;
-      const dy = (event.clientY - drag.startY) / rect.height * 100;
-      const next = cloneConfig(drag.config);
-
-      if (drag.mode === "move") {
-        cornerIds.forEach((corner) => {
-          next.corners[corner].x = clamp(drag.config.corners[corner].x + dx, 0, 100);
-          next.corners[corner].y = clamp(drag.config.corners[corner].y + dy, 0, 100);
-        });
-      }
-      if (drag.mode === "corner" && drag.corner) {
-        next.corners[drag.corner] = {
-          x: clamp(drag.config.corners[drag.corner].x + dx, 0, 100),
-          y: clamp(drag.config.corners[drag.corner].y + dy, 0, 100),
-        };
-      }
-      if (drag.mode === "curve" && drag.side) {
-        const pointer = { x: (event.clientX - rect.left) / rect.width * 100, y: (event.clientY - rect.top) / rect.height * 100 };
-        const [a, b] = sideEdge(drag.config, drag.side);
-        const midpoint = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        const edgeX = b.x - a.x;
-        const edgeY = b.y - a.y;
-        const edgeLength = Math.hypot(edgeX, edgeY) || 1;
-        const normal = { x: edgeY / edgeLength, y: -edgeX / edgeLength };
-        const projection = (pointer.x - midpoint.x) * normal.x + (pointer.y - midpoint.y) * normal.y;
-        const geometry = curveGeometry(drag.config);
-        const base = drag.side === "top" || drag.side === "bottom" ? geometry.averageHeight : geometry.averageWidth;
-        const key = `curve${drag.side[0].toUpperCase()}${drag.side.slice(1)}` as "curveTop" | "curveRight" | "curveBottom" | "curveLeft";
-        next[key] = clamp(projection / (.75 * base) * 100, -40, 40);
-      }
-
-      setMobileScreen(next);
-      try { window.localStorage.setItem(mobileCalibrationStorageKey, JSON.stringify(next)); } catch { /* Local storage can be unavailable in private mode. */ }
-    }
-
-    function stopPointer() {
-      mobileDragRef.current = null;
-      document.body.classList.remove("is-transforming-screen");
-    }
-
-    window.addEventListener("pointermove", movePointer, { passive: false });
-    window.addEventListener("pointerup", stopPointer);
-    window.addEventListener("pointercancel", stopPointer);
-    return () => {
-      window.removeEventListener("pointermove", movePointer);
-      window.removeEventListener("pointerup", stopPointer);
-      window.removeEventListener("pointercancel", stopPointer);
-    };
-  }, []);
 
   useEffect(() => {
     void loadPersonalGenerations()
@@ -614,37 +480,6 @@ export default function Home() {
     if (context && gain) gain.gain.setTargetAtTime(next ? .5 : 0, context.currentTime, .025);
   }
 
-  function beginMobileTransform(
-    event: ReactPointerEvent<HTMLElement>,
-    mode: MobileDragState["mode"],
-    corner?: CornerId,
-    side?: SideId,
-  ) {
-    if (!mobileCalibrationOpen) return;
-    event.preventDefault();
-    event.stopPropagation();
-    mobileDragRef.current = {
-      mode,
-      corner,
-      side,
-      startX: event.clientX,
-      startY: event.clientY,
-      config: cloneConfig(mobileScreen),
-    };
-    document.body.classList.add("is-transforming-screen");
-  }
-
-  function openMobileCalibration() {
-    setFocus(null);
-    setMobileCalibrationOpen(true);
-  }
-
-  function resetMobileCalibration() {
-    const reset = cloneConfig(mobileScreenDefault);
-    setMobileScreen(reset);
-    try { window.localStorage.removeItem(mobileCalibrationStorageKey); } catch { /* Local storage can be unavailable in private mode. */ }
-  }
-
   function skipIntro() {
     clearPhaseTimers();
     [batteryAudioRef, cameraOffAudioRef, larryAudioRef, deathAudioRef].forEach((ref) => {
@@ -719,17 +554,9 @@ export default function Home() {
   const activeApp = desktopApps.find((app) => app.id === selectedApp) || desktopApps[0];
   const activeArchive = archiveItems.find((item) => item.id === selectedArchive) || archiveItems[0];
   const activeArchiveExtension = activeArchive.fileExtension || activeArchive.source.split(".").pop() || "png";
-  const mobileBounds = boundsOf(mobileScreen);
-  const mobileScreenStyle = {
-    left: `${mobileBounds.left}%`,
-    top: `${mobileBounds.top}%`,
-    width: `${mobileBounds.width}%`,
-    height: `${mobileBounds.height}%`,
-    "--screen-alpha": mobileScreen.screenAlpha,
-  } as CSSProperties;
 
   return (
-    <main className={`night-shift phase-${phase} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""} ${mobileCalibrationOpen ? "is-mobile-calibrating" : ""}`} style={sceneStyle}>
+    <main className={`night-shift phase-${phase} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""}`} style={sceneStyle}>
       <svg className="screen-mask-defs" aria-hidden="true" focusable="false">
         <defs>
           {monitorIds.map((id) => (
@@ -737,13 +564,10 @@ export default function Home() {
               <path d={makeMaskPath(screens[id])} />
             </clipPath>
           ))}
-          <clipPath id="mobile-crt-mask" clipPathUnits="objectBoundingBox">
-            <path d={makeMaskPath(localizeConfig(mobileScreen))} />
-          </clipPath>
         </defs>
       </svg>
 
-      <div ref={sceneRef} className="scene-frame" aria-label="Evil Larry night surveillance room">
+      <div className="scene-frame" aria-label="Evil Larry night surveillance room">
         <video ref={loopRef} className="room-video loop-video desktop-loop-video" src="/assets/video/looped.mp4" preload="auto" playsInline loop muted />
         <video ref={verticalIntroRef} className="room-video vertical-room-video vertical-intro-video" src="/assets/video/vertical/intro_vertical-1.mp4" preload="metadata" playsInline muted />
         <video ref={verticalLoopRef} className="room-video vertical-room-video vertical-loop-video" src="/assets/video/vertical/loop_vertical.mp4" preload="metadata" playsInline loop muted />
@@ -792,14 +616,7 @@ export default function Home() {
           );
         })}
 
-        <button
-          className="mobile-center-monitor"
-          type="button"
-          style={mobileScreenStyle}
-          aria-label={mobileCalibrationOpen ? "Drag mobile CRT screen" : "Open Live Surveillance"}
-          onClick={() => !mobileCalibrationOpen && openMonitor("center")}
-          onPointerDown={(event) => beginMobileTransform(event, "move")}
-        >
+        <button className="mobile-center-monitor" type="button" aria-label="Open Live Surveillance" onClick={() => openMonitor("center")}>
           <span>CAM-06</span>
           <strong>ENTER LARRY OS</strong>
           <small>[ TAP TO OPEN ]</small>
@@ -809,36 +626,6 @@ export default function Home() {
           <button type="button" onClick={() => openMonitor("right")}><span>ARC-09</span><strong>THE ARCHIVES</strong></button>
         </nav>
 
-        {mobileCalibrationOpen && (
-          <div className="mobile-transform-layer" aria-label="Mobile CRT transform controls">
-            <svg className="mobile-transform-guides" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-              <path d={makeScreenPath(mobileScreen, false)} vectorEffect="non-scaling-stroke" />
-            </svg>
-            {cornerIds.map((corner) => (
-              <button
-                className="mobile-transform-handle mobile-corner-handle"
-                key={corner}
-                type="button"
-                style={{ left: `${mobileScreen.corners[corner].x}%`, top: `${mobileScreen.corners[corner].y}%` }}
-                aria-label={`Drag ${corner} corner`}
-                onPointerDown={(event) => beginMobileTransform(event, "corner", corner)}
-              />
-            ))}
-            {(["top", "right", "bottom", "left"] as SideId[]).map((side) => {
-              const point = sideHandlePoint(mobileScreen, side);
-              return (
-                <button
-                  className={`mobile-transform-handle mobile-side-handle mobile-side-${side}`}
-                  key={side}
-                  type="button"
-                  style={{ left: `${point.x}%`, top: `${point.y}%` }}
-                  aria-label={`Bend ${side} edge`}
-                  onPointerDown={(event) => beginMobileTransform(event, "curve", undefined, side)}
-                />
-              );
-            })}
-          </div>
-        )}
       </div>
 
       <div className="vhs-overlay" aria-hidden="true" />
@@ -924,18 +711,6 @@ export default function Home() {
         <span>THREAT LEVEL: UNKNOWN</span>
       </footer>
 
-      {online && (
-        <button className="mobile-calibration-toggle" type="button" onClick={openMobileCalibration}>FIT CRT</button>
-      )}
-
-      {mobileCalibrationOpen && (
-        <aside className="mobile-calibration-panel" aria-label="Mobile CRT calibration">
-          <header><span>FREE WARP MODE</span><button type="button" onClick={() => setMobileCalibrationOpen(false)}>DONE</button></header>
-          <strong>FIT THE CRT GLASS</strong>
-          <p>Drag a square corner to reshape. Drag a diamond on any side to bend that edge. Your changes save automatically in this browser.</p>
-          <button className="mobile-calibration-reset" type="button" onClick={resetMobileCalibration}>RESET CRT</button>
-        </aside>
-      )}
 
       {focus && (
         <section className="focus-panel" aria-live="polite">
