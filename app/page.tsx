@@ -99,9 +99,7 @@ const monitorCopy: Record<MonitorId, { code: string; title: string; detail: stri
 };
 
 const desktopApps = [
-  { id: "x", glyph: "X", label: "X / TWITTER", detail: "PUBLIC TRANSMISSION CHANNEL // LINK AWAITING CONFIGURATION" },
-  { id: "telegram", glyph: "TG", label: "TELEGRAM", detail: "LARRY COMMUNITY UPLINK // LINK AWAITING CONFIGURATION" },
-  { id: "contract", glyph: "0X", label: "CONTRACT", detail: "TOKEN ADDRESS // NOT YET ASSIGNED" },
+  { id: "x", glyph: "X", label: "X / TWITTER", detail: "PUBLIC TRANSMISSION CHANNEL // @EVILLARRY_CAT", href: "https://x.com/evillarry_cat" },
   { id: "lore", glyph: "?", label: "LARRY.DAT", detail: "CLASSIFIED ORIGIN FILE // 9 RECORDS RECOVERED" },
   { id: "terminal", glyph: ">_", label: "TERMINAL", detail: "ROOT ACCESS DENIED // LARRY IS WATCHING" },
 ];
@@ -113,13 +111,14 @@ const memeNames = [
   "NIGHT SHIFT MANAGER", "TREAT NEGOTIATOR", "LITTLE GUY, BIG CRIMES", "FBI MOST WANTED CAT", "THE BLINKLESS ONE",
   "DOORWAY JUMPSCARE", "MOUSE UNION BUSTER", "CABLE CHEWER", "NO THOUGHTS, JUST LARRY", "CATNIP KINGPIN",
   "THE LOOMING", "VACUUM SURVIVOR", "FEED ME OR ELSE", "SCREEN WATCHER", "FINAL BOSS: LARRY",
+  "THE NIGHT-OWL FILE", "CAMERA ROLL VIOLATION", "DO NOT ZOOM IN",
 ];
 
 const memeReports = ["THE GROUP CHAT", "A POTATO CAMERA", "AN UNRELIABLE WITNESS", "THE NEIGHBOR'S RING CAM", "THE KITCHEN FRIDGE", "A SHAKY HAND" ];
 const memeThreats = ["MILDLY CONCERNING", "SNACK-MOTIVATED", "TOO SILLY TO TRUST", "DO NOT PET", "PROBABLY HUNGRY", "POSSIBLY OMNISCIENT"];
 const memeLocations = ["YOUR PERIPHERAL VISION", "BEHIND THE CURTAIN", "THE KITCHEN AT 3:00 AM", "UNDER THE DESK", "ON THE WIFI", "IN THE WALLS"];
 
-const initialArchive: ArchiveItem[] = Array.from({ length: 30 }, (_, index) => {
+const initialArchive: ArchiveItem[] = Array.from({ length: 33 }, (_, index) => {
   const number = String(index + 1).padStart(2, "0");
   return {
     id: 1000 + index,
@@ -729,7 +728,13 @@ export default function Home() {
             <div className="desktop-workspace">
               <div className="desktop-icons" aria-label="Larry OS applications">
                 {desktopApps.map((app) => (
-                  <button className={selectedApp === app.id ? "is-selected" : ""} type="button" key={app.id} onClick={() => setSelectedApp(app.id)}>
+                  <button className={selectedApp === app.id ? "is-selected" : ""} type="button" key={app.id} onClick={() => {
+                    if (app.href) {
+                      window.open(app.href, "_blank", "noopener,noreferrer");
+                      return;
+                    }
+                    setSelectedApp(app.id);
+                  }}>
                     <i>{app.glyph}</i>
                     <span>{app.label}</span>
                   </button>
