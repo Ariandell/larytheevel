@@ -246,7 +246,7 @@ button,a { touch-action:manipulation; }
   .phase-lamp .vertical-intro-video { opacity:1; }
   .vertical-loop-video { z-index:1; }
   .screen-mask-defs,.scene-frame>.monitor { display:none; }
-  .mobile-center-monitor { position:absolute; z-index:8; left:50%; top:57%; display:grid; place-content:center; gap:5px; width:min(62vw,300px); min-height:92px; padding:8px; color:#cfe2c1; border:0; background:transparent; cursor:pointer; opacity:0; pointer-events:none; text-align:center; text-shadow:0 0 8px currentColor,0 0 18px rgba(126,183,104,.22); transform:translate(-50%,-50%); transition:opacity 280ms ease,color 160ms ease,text-shadow 160ms ease; }
+  .mobile-center-monitor { position:absolute; z-index:8; left:50%; top:56%; display:grid; place-content:center; gap:5px; width:min(62vw,300px); min-height:92px; padding:8px; color:#cfe2c1; border:0; background:transparent; cursor:pointer; opacity:0; pointer-events:none; text-align:center; text-shadow:0 0 8px currentColor,0 0 18px rgba(126,183,104,.22); transform:translate(-50%,-50%); transition:opacity 280ms ease,color 160ms ease,text-shadow 160ms ease; }
   .is-online .mobile-center-monitor { opacity:1; pointer-events:auto; }
   .mobile-center-monitor:hover,.mobile-center-monitor:focus-visible { color:#eff8e8; text-shadow:0 0 9px currentColor,0 0 22px rgba(176,225,150,.58); outline:none; }
   .mobile-center-monitor span,.mobile-center-monitor small { color:rgba(207,226,193,.62); font-size:6px; letter-spacing:.16em; }
