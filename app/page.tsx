@@ -93,7 +93,7 @@ const screens: ScreenConfigs = {
 };
 
 const monitorCopy: Record<MonitorId, { code: string; title: string; detail: string }> = {
-  left: { code: "GEN-01", title: "SUMMON LARRY", detail: "One of one hundred Larry identities is waiting for you." },
+  left: { code: "GEN-01", title: "GENERATOR LARRY", detail: "A new Larry cosplay is waiting for you." },
   center: { code: "CAM-06", title: "LIVE SURVEILLANCE", detail: "Central corridor feed. Motion status: unknown." },
   right: { code: "ARC-09", title: "THE ARCHIVES", detail: "Recovered footage, classified memes and sightings." },
 };
@@ -622,7 +622,7 @@ export default function Home() {
           <small>[ TAP TO OPEN ]</small>
         </button>
         <nav className="mobile-terminal-dock" aria-label="Mobile security terminals">
-          <button type="button" onClick={() => openMonitor("left")}><span>GEN-01</span><strong>SUMMON LARRY</strong></button>
+          <button type="button" onClick={() => openMonitor("left")}><span>GEN-01</span><strong>GENERATOR LARRY</strong></button>
           <button type="button" onClick={() => openMonitor("right")}><span>ARC-09</span><strong>THE ARCHIVES</strong></button>
         </nav>
 
@@ -660,8 +660,8 @@ export default function Home() {
             <div className="larry-reveal" aria-label="Larry emerging from darkness">
               <img className="larry-layer larry-body-layer" src="/assets/larry-dark-plate-v1.png" alt="" />
               <img className="larry-layer larry-head-layer" src="/assets/larry-dark-plate-v1.png" alt="" />
-              <img className="larry-layer larry-eye-layer larry-eye-left" src="/assets/larry-dark-plate-v1.png" alt="" />
-              <img className="larry-layer larry-eye-layer larry-eye-right" src="/assets/larry-dark-plate-v1.png" alt="" />
+              <img className="larry-layer larry-eye-layer larry-eye-left" src="/assets/larry-dark-plate-v1.png" alt="" decoding="sync" fetchPriority="high" />
+              <img className="larry-layer larry-eye-layer larry-eye-right" src="/assets/larry-dark-plate-v1.png" alt="" decoding="sync" fetchPriority="high" />
               <div className="larry-light" />
               <div className="larry-impact" />
               <span className="larry-camera-code">UNKNOWN SUBJECT / 0.6M</span>
