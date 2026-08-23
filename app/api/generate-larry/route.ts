@@ -18,15 +18,7 @@ const guard = generatorGuard.__larryGeneratorGuard ??= {
 const cosplayPrompt = {
   id: "COSPLAY-LARRY",
   title: "COSPLAY LARRY",
-  edit: [
-    "Transform the uploaded photo into a cosplay: add hair, a mask, armor, makeup, a weapon, and/or accessories at your discretion.",
-    "Choose a coherent cosplay concept yourself and make it visually fun and distinctive.",
-    "Preserve Larry's original pose, facial identity, proportions, camera angle, and the original lighting direction.",
-    "Adjust the colors, reflections, contact shadows, and material shadows of every added element for a realistic, seamless blend with the original photograph.",
-    "Keep Larry clearly recognizable as the same cat from the uploaded photo.",
-    "High quality, square 1:1 aspect ratio.",
-    "Negative: no distortions, no face blurring, no artifacts, no duplicate subject, no extra limbs, no malformed accessories, no text, no logo, and no watermark.",
-  ].join(" "),
+  edit: "Transform the uploaded photo into a cosplay: add hair, mask, armor, makeup, weapon, and accessories at your discretion. Preserve the original lighting and pose, and adjust the colors and shadows for a realistic, seamless blend. High quality, 1:1 aspect ratio. Negative: no distortions, no face blurring, no face cover, no artifacts.",
 } as const;
 
 function toBase64(bytes: ArrayBuffer) {
