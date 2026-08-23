@@ -259,6 +259,7 @@ export default function Home() {
   const [generatedSource, setGeneratedSource] = useState<string | null>(null);
   const [generatedDownloadName, setGeneratedDownloadName] = useState("larry-output.png");
   const [generatedPresetName, setGeneratedPresetName] = useState("UNKNOWN LARRY");
+  const [generationError, setGenerationError] = useState("");
   const [personalGenerationCount, setPersonalGenerationCount] = useState(0);
   const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>(initialArchive);
   const [selectedArchive, setSelectedArchive] = useState(initialArchive[0].id);
@@ -509,6 +510,7 @@ export default function Home() {
 
   async function generateLarry() {
     if (generationState === "working") return;
+    setGenerationError("");
     setGenerationState("working");
     try {
       const response = await fetch("/api/generate-larry", {
@@ -542,7 +544,8 @@ export default function Home() {
       setPersonalGenerationCount((count) => count + 1);
       void savePersonalGeneration(item).catch(() => { /* The current result remains downloadable. */ });
       setGenerationState("ready");
-    } catch {
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : "Signal lost. Please try again.");
       setGenerationState("error");
     }
   }
@@ -820,7 +823,7 @@ export default function Home() {
                   {generationState === "working" ? "FINDING YOUR LARRY..." : generationState === "ready" ? "FIND ANOTHER LARRY" : "FIND MY LARRY"}
                 </button>
                 <small className="generator-status">
-                  {generationState === "ready" ? `${generatedPresetName} // SAVED TO YOUR LOCAL ARCHIVE` : generationState === "error" ? "SIGNAL LOST // TRY AGAIN" : generationState === "working" ? "DESIGNING LARRY'S COSPLAY..." : "LARRY LOCKED // READY TO TRANSFORM"}
+                  {generationState === "ready" ? `${generatedPresetName} // SAVED TO YOUR LOCAL ARCHIVE` : generationState === "error" ? generationError : generationState === "working" ? "DESIGNING LARRY'S COSPLAY..." : "LARRY LOCKED // READY TO TRANSFORM"}
                 </small>
                 {generationState === "ready" && (
                   <div className="generator-result-actions">

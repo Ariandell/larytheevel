@@ -2,17 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 
 const model = "gemini-3.1-flash-lite-image";
 const requestCooldownMs = 20_000;
+const requestWindowMs = 60_000;
+const maxRequestsPerMinute = 3;
 const defaultGenerationLimit = 1000;
 
 type GeneratorGuard = {
   completed: number;
   nextRequestByClient: Map<string, number>;
+  requestsByClient: Map<string, number[]>;
 };
 
 const generatorGuard = globalThis as typeof globalThis & { __larryGeneratorGuard?: GeneratorGuard };
 const guard = generatorGuard.__larryGeneratorGuard ??= {
   completed: 0,
   nextRequestByClient: new Map(),
+  requestsByClient: new Map(),
 };
 
 const cosplayPrompt = {
@@ -58,6 +62,19 @@ export async function POST(request: NextRequest) {
     || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     || "unknown";
   const now = Date.now();
+  const recentRequests = (guard.requestsByClient.get(clientId) || []).filter(
+    (timestamp: number) => now - timestamp < requestWindowMs,
+  );
+  if (recentRequests.length >= maxRequestsPerMinute) {
+    const retryAfterMs = requestWindowMs - (now - recentRequests[0]);
+    return NextResponse.json({
+      error: "This terminal has reached its three summoning attempts per minute. Please wait before trying again.",
+    }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.max(1, Math.ceil(retryAfterMs / 1000))) },
+    });
+  }
+
   const nextAllowedAt = guard.nextRequestByClient.get(clientId) || 0;
   if (now < nextAllowedAt) {
     return NextResponse.json({ error: "The terminal needs a moment before the next summoning." }, {
@@ -65,6 +82,8 @@ export async function POST(request: NextRequest) {
       headers: { "Retry-After": String(Math.ceil((nextAllowedAt - now) / 1000)) },
     });
   }
+  recentRequests.push(now);
+  guard.requestsByClient.set(clientId, recentRequests);
   guard.nextRequestByClient.set(clientId, now + requestCooldownMs);
 
   const sourceUrl = new URL("/assets/larry-cosplay-reference.png", request.url);
