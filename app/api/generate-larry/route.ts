@@ -18,7 +18,17 @@ const guard = generatorGuard.__larryGeneratorGuard ??= {
 const cosplayPrompt = {
   id: "COSPLAY-LARRY",
   title: "COSPLAY LARRY",
-  edit: "Transform the uploaded photo into a cosplay: add hair, mask, armor, makeup, weapon, and accessories at your discretion. Preserve the original lighting and pose, and adjust the colors and shadows for a realistic, seamless blend. High quality, 1:1 aspect ratio. Negative: no distortions, no face blurring, no face cover, no artifacts.",
+  edit: [
+    "Edit the uploaded Larry photo into a cosplay while using the original photograph as the unchanged base image, not as inspiration for a new image.",
+    "ABSOLUTE FACE LOCK: preserve Larry's complete original face pixel-for-pixel, including both eyes and their reflections, forehead, cheeks, nose, muzzle, mouth, ears, facial fur, proportions, expression, and identity.",
+    "The entire face and both eyes must remain fully visible and completely unobstructed.",
+    "Do not redraw, regenerate, retouch, enhance, sharpen, stylize, relight, recolor, or replace any part of Larry's face or head.",
+    "At your discretion, add an open-face cosplay using armor or clothing below the neck, a weapon beside the body, and accessories positioned only around, above, or below the face without overlapping it.",
+    "Do not add a mask, visor, eyewear, face paint, makeup, facial jewelry, or hair over the face.",
+    "Preserve the original pose, camera angle, crop, and lighting. Adjust only the colors and shadows of the added costume elements for a realistic, seamless blend.",
+    "High quality costume details, square 1:1 aspect ratio.",
+    "Negative: changed face, covered face, obscured eyes, altered eyes, altered ears, altered fur, new facial details, distortions, face blurring, artifacts, duplicate subject, extra limbs, text, logo, watermark.",
+  ].join(" "),
 } as const;
 
 function toBase64(bytes: ArrayBuffer) {
