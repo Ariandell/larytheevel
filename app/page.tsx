@@ -34,7 +34,7 @@ type ArchiveItem = {
 
 const personalArchiveDatabase = "evil-larry-personal-archive";
 const personalArchiveStore = "generations";
-const deathSceneDuration = 5600;
+const deathSceneDuration = 3000;
 
 const monitorIds: MonitorId[] = ["left", "center", "right"];
 const cornerIds: CornerId[] = ["tl", "tr", "br", "bl"];
@@ -225,6 +225,8 @@ function makeMaskPath(config: MonitorConfig) {
 
 export default function Home() {
   const loopRef = useRef<HTMLVideoElement>(null);
+  const verticalIntroRef = useRef<HTMLVideoElement>(null);
+  const verticalLoopRef = useRef<HTMLVideoElement>(null);
   const batteryAudioRef = useRef<HTMLAudioElement>(null);
   const cameraOffAudioRef = useRef<HTMLAudioElement>(null);
   const larryAudioRef = useRef<HTMLAudioElement>(null);
@@ -237,6 +239,7 @@ export default function Home() {
   const officeAudioContextRef = useRef<AudioContext | null>(null);
   const officeAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const officeAudioGainRef = useRef<GainNode | null>(null);
+  const roomTransitionRef = useRef(0);
   const [online, setOnline] = useState(false);
   const [phase, setPhase] = useState<IntroPhase>("camera");
   const [focus, setFocus] = useState<MonitorId | null>(null);
@@ -289,6 +292,7 @@ export default function Home() {
   function clearPhaseTimers() {
     phaseTimersRef.current.forEach(window.clearTimeout);
     phaseTimersRef.current = [];
+    roomTransitionRef.current += 1;
   }
 
   function playEffect(ref: { current: HTMLAudioElement | null }, volume = .5) {
@@ -297,6 +301,33 @@ export default function Home() {
     ref.current.volume = volume;
     ref.current.muted = false;
     void ref.current.play().catch(() => { /* Playback has already been user-unlocked. */ });
+  }
+
+  function fadeOutEffect(ref: { current: HTMLAudioElement | null }, duration = 650) {
+    const audio = ref.current;
+    if (!audio || audio.paused) return;
+    const startVolume = audio.volume;
+    const startTime = performance.now();
+    const fade = (now: number) => {
+      const progress = Math.min(1, (now - startTime) / duration);
+      audio.volume = startVolume * (1 - progress);
+      if (progress < 1) {
+        window.requestAnimationFrame(fade);
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = startVolume;
+      }
+    };
+    window.requestAnimationFrame(fade);
+  }
+
+  function isPortraitMobile() {
+    return window.matchMedia("(orientation: portrait) and (max-width: 900px)").matches;
+  }
+
+  function activeRoomLoop() {
+    return isPortraitMobile() ? verticalLoopRef.current : loopRef.current;
   }
 
   function scheduleIntro() {
@@ -319,6 +350,7 @@ export default function Home() {
         setPhase("died");
         playEffect(deathAudioRef);
       }, introTiming.died),
+      window.setTimeout(() => fadeOutEffect(deathAudioRef), introTiming.respawn - 650),
       window.setTimeout(() => setPhase("respawn"), introTiming.respawn),
     ];
   }
@@ -366,9 +398,10 @@ export default function Home() {
     if (officeStartedRef.current) return;
     officeStartedRef.current = true;
     clearPhaseTimers();
+    const transitionId = roomTransitionRef.current;
     setPhase("lamp");
     void startOfficeAmbience();
-    const loop = loopRef.current;
+    const loop = activeRoomLoop();
     if (!loop) {
       phaseTimersRef.current = [window.setTimeout(() => {
         playEffect(monitorAudioRef);
@@ -377,6 +410,36 @@ export default function Home() {
       }, 1750)];
       return;
     }
+
+    if (isPortraitMobile()) {
+      const mobileIntro = verticalIntroRef.current;
+      const revealMobileRoom = () => {
+        if (roomTransitionRef.current !== transitionId) return;
+        loop.currentTime = 0;
+        void loop.play().catch(() => { /* The first loop frame remains visible. */ });
+        const revealRoom = () => {
+          if (roomTransitionRef.current !== transitionId) return;
+          playEffect(monitorAudioRef);
+          setPhase("office");
+          setOnline(true);
+        };
+        if ("requestVideoFrameCallback" in loop) loop.requestVideoFrameCallback(revealRoom);
+        else requestAnimationFrame(revealRoom);
+      };
+      if (!mobileIntro) {
+        revealMobileRoom();
+        return;
+      }
+      mobileIntro.currentTime = 0;
+      mobileIntro.addEventListener("ended", revealMobileRoom, { once: true });
+      try {
+        await mobileIntro.play();
+      } catch {
+        revealMobileRoom();
+      }
+      return;
+    }
+
     loop.currentTime = 0;
     let loopIsPlaying = false;
     try {
@@ -405,6 +468,27 @@ export default function Home() {
     const context = officeAudioContextRef.current;
     const gain = officeAudioGainRef.current;
     if (context && gain) gain.gain.setTargetAtTime(next ? .5 : 0, context.currentTime, .025);
+  }
+
+  function skipIntro() {
+    clearPhaseTimers();
+    [batteryAudioRef, cameraOffAudioRef, larryAudioRef, deathAudioRef].forEach((ref) => {
+      if (!ref.current) return;
+      ref.current.pause();
+      ref.current.currentTime = 0;
+    });
+    verticalIntroRef.current?.pause();
+    setInitialized(true);
+    setFocus(null);
+    setOnline(true);
+    setPhase("office");
+    playEffect(monitorAudioRef);
+    void startOfficeAmbience();
+    const loop = activeRoomLoop();
+    if (loop) {
+      loop.currentTime = 0;
+      void loop.play().catch(() => { /* The first loop frame remains visible. */ });
+    }
   }
 
   function openMonitor(id: MonitorId) {
@@ -463,13 +547,6 @@ export default function Home() {
 
   return (
     <main className={`night-shift phase-${phase} ${online ? "is-online" : ""} ${focus ? `focus-${focus}` : ""}`} style={sceneStyle}>
-      <aside className="rotate-device" aria-label="Rotate your phone to landscape mode">
-        <div className="rotate-phone" aria-hidden="true"><i /></div>
-        <span>MOBILE SURVEILLANCE PROTOCOL</span>
-        <strong>ROTATE YOUR DEVICE</strong>
-        <p>TURN YOUR PHONE SIDEWAYS TO ENTER THE NIGHT SHIFT.</p>
-      </aside>
-
       <svg className="screen-mask-defs" aria-hidden="true" focusable="false">
         <defs>
           {monitorIds.map((id) => (
@@ -481,7 +558,9 @@ export default function Home() {
       </svg>
 
       <div className="scene-frame" aria-label="Evil Larry night surveillance room">
-        <video ref={loopRef} className="room-video loop-video" src="/assets/video/looped.mp4" preload="auto" playsInline loop muted />
+        <video ref={loopRef} className="room-video loop-video desktop-loop-video" src="/assets/video/looped.mp4" preload="auto" playsInline loop muted />
+        <video ref={verticalIntroRef} className="room-video vertical-room-video vertical-intro-video" src="/assets/video/vertical/intro_vertical-1.mp4" preload="metadata" playsInline muted />
+        <video ref={verticalLoopRef} className="room-video vertical-room-video vertical-loop-video" src="/assets/video/vertical/loop_vertical.mp4" preload="metadata" playsInline loop muted />
 
         {monitorIds.map((id) => {
           const config = screens[id];
@@ -526,10 +605,24 @@ export default function Home() {
             </button>
           );
         })}
+
+        <button className="mobile-center-monitor" type="button" aria-label="Open Live Surveillance" onClick={() => openMonitor("center")}>
+          <span>CAM-06</span>
+          <strong>ENTER LARRY OS</strong>
+          <small>[ TAP TO OPEN ]</small>
+        </button>
+        <nav className="mobile-terminal-dock" aria-label="Mobile security terminals">
+          <button type="button" onClick={() => openMonitor("left")}><span>GEN-01</span><strong>SUMMON LARRY</strong></button>
+          <button type="button" onClick={() => openMonitor("right")}><span>ARC-09</span><strong>THE ARCHIVES</strong></button>
+        </nav>
       </div>
 
       <div className="vhs-overlay" aria-hidden="true" />
       <div className="vignette" aria-hidden="true" />
+
+      {phase !== "office" && (
+        <button className="skip-intro" type="button" onClick={skipIntro}>SKIP INTRO →</button>
+      )}
 
       {phase !== "lamp" && phase !== "office" && (
         <section className={`cold-open cold-open-${phase}`} aria-live="polite">
